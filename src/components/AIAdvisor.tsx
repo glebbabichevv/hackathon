@@ -138,7 +138,7 @@ export function AIAdvisor({ analysis, onRefresh }: Props) {
           {analysis.error && (
             <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-2">
               <p className="text-xs text-yellow-400">
-                <strong>Демо-режим:</strong> {analysis.error}. Добавьте VITE_ANTHROPIC_API_KEY в .env для реального AI.
+                <strong>Ошибка AI:</strong> {analysis.error}
               </p>
             </div>
           )}

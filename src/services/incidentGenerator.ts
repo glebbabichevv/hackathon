@@ -81,7 +81,8 @@ export async function generateIncident(state: CityState): Promise<Alert | null> 
       partial => { fullText = partial }
     )
 
-    const jsonMatch = fullText.match(/\{[\s\S]*\}/)
+    const cleaned = fullText.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim()
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
     if (!jsonMatch) return null
 
     const parsed = JSON.parse(jsonMatch[0])

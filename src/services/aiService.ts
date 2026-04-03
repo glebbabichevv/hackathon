@@ -71,21 +71,31 @@ export async function analyzeCity(
       }
     )
 
-    const jsonMatch = fullText.match(/\{[\s\S]*\}/)
+    // Убираем markdown-обёртку если модель добавила ```json ... ```
+    const cleaned = fullText
+      .replace(/```json\s*/gi, '')
+      .replace(/```\s*/g, '')
+      .trim()
+
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
     if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0])
-      const result: AIAnalysis = {
-        summary: parsed.summary || '',
-        whatHappening: parsed.whatHappening || '',
-        howCritical: parsed.howCritical || '',
-        whatToDo: parsed.whatToDo || '',
-        predictions: parsed.predictions || [],
-        loading: false,
+      try {
+        const parsed = JSON.parse(jsonMatch[0])
+        const result: AIAnalysis = {
+          summary: parsed.summary || '',
+          whatHappening: parsed.whatHappening || '',
+          howCritical: parsed.howCritical || '',
+          whatToDo: parsed.whatToDo || '',
+          predictions: Array.isArray(parsed.predictions) ? parsed.predictions : [],
+          loading: false,
+        }
+        onUpdate?.(result)
+        return result
+      } catch {
+        throw new Error('Модель вернула невалидный JSON')
       }
-      onUpdate?.(result)
-      return result
     }
-    throw new Error('Не удалось разобрать JSON ответ')
+    throw new Error('JSON не найден в ответе модели')
   } catch (err) {
     const error = err instanceof Error ? err.message : 'Ошибка Ollama'
     const isNotRunning = error.includes('fetch') || error.includes('Failed')
