@@ -27,8 +27,8 @@ export async function fetchAlmatyTraffic(): Promise<RouteTraffic[]> {
     try {
       const body = {
         points: [
-          { type: 'walking', x: route.from[1], y: route.from[0] },
-          { type: 'walking', x: route.to[1], y: route.to[0] },
+          { type: 'driving', lat: route.from[0], lon: route.from[1] },
+          { type: 'driving', lat: route.to[0], lon: route.to[1] },
         ],
         locale: 'ru',
         type: 'jam',

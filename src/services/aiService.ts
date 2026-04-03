@@ -1,7 +1,13 @@
+import Anthropic from '@anthropic-ai/sdk'
 import { streamOllamaChat, buildCitySystemPrompt } from './ollamaService'
 import type { CityState, AIAnalysis } from '../types/city'
 
 const OLLAMA_MODEL = import.meta.env.VITE_OLLAMA_MODEL || 'llama3.2'
+
+const anthropic = new Anthropic({
+  apiKey: import.meta.env.VITE_ANTHROPIC_API_KEY || '',
+  dangerouslyAllowBrowser: true,
+})
 
 function buildAnalysisPrompt(state: CityState): string {
   const sectors = Object.values(state.sectors)
@@ -58,9 +64,46 @@ export async function analyzeCity(
     error: undefined,
   }
 
-  try {
-    let fullText = ''
+  const parseJSON = (text: string): AIAnalysis | null => {
+    const cleaned = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim()
+    const match = cleaned.match(/\{[\s\S]*\}/)
+    if (!match) return null
+    try {
+      const p = JSON.parse(match[0])
+      return {
+        summary: p.summary || '',
+        whatHappening: p.whatHappening || '',
+        howCritical: p.howCritical || '',
+        whatToDo: p.whatToDo || '',
+        predictions: Array.isArray(p.predictions) ? p.predictions : [],
+        loading: false,
+      }
+    } catch { return null }
+  }
 
+  try {
+    // ── Claude (облачный) ──────────────────────────────────────────────────────
+    if (_provider === 'claude' && import.meta.env.VITE_ANTHROPIC_API_KEY) {
+      const stream = await anthropic.messages.stream({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1024,
+        system: buildCitySystemPrompt(state),
+        messages: [{ role: 'user', content: buildAnalysisPrompt(state) }],
+      })
+      let fullText = ''
+      for await (const chunk of stream) {
+        if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
+          fullText += chunk.delta.text
+          onUpdate?.({ loading: true, summary: fullText.slice(0, 80) + '…' })
+        }
+      }
+      const result = parseJSON(fullText)
+      if (result) { onUpdate?.(result); return result }
+      throw new Error('JSON не найден в ответе Claude')
+    }
+
+    // ── Ollama (локальный) ─────────────────────────────────────────────────────
+    let fullText = ''
     await streamOllamaChat(
       'Ты — AI-аналитик умного города. Отвечай строго в JSON формате без markdown.',
       [{ role: 'user', content: buildAnalysisPrompt(state) }],
@@ -70,42 +113,20 @@ export async function analyzeCity(
         onUpdate?.({ loading: true, summary: partial.slice(0, 80) + '…' })
       }
     )
-
-    // Убираем markdown-обёртку если модель добавила ```json ... ```
-    const cleaned = fullText
-      .replace(/```json\s*/gi, '')
-      .replace(/```\s*/g, '')
-      .trim()
-
-    const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
-    if (jsonMatch) {
-      try {
-        const parsed = JSON.parse(jsonMatch[0])
-        const result: AIAnalysis = {
-          summary: parsed.summary || '',
-          whatHappening: parsed.whatHappening || '',
-          howCritical: parsed.howCritical || '',
-          whatToDo: parsed.whatToDo || '',
-          predictions: Array.isArray(parsed.predictions) ? parsed.predictions : [],
-          loading: false,
-        }
-        onUpdate?.(result)
-        return result
-      } catch {
-        throw new Error('Модель вернула невалидный JSON')
-      }
-    }
+    const result = parseJSON(fullText)
+    if (result) { onUpdate?.(result); return result }
     throw new Error('JSON не найден в ответе модели')
+
   } catch (err) {
-    const error = err instanceof Error ? err.message : 'Ошибка Ollama'
+    const error = err instanceof Error ? err.message : 'Ошибка AI'
     const isNotRunning = error.includes('fetch') || error.includes('Failed')
 
     const result: AIAnalysis = {
       ...fallback,
       error: isNotRunning ? 'Ollama не запущена. Запустите: ollama serve' : error,
-      summary: 'Ollama не доступна',
+      summary: 'AI недоступен',
       whatHappening: `Запустите Ollama: ollama serve && ollama pull ${ollamaModel}`,
-      howCritical: 'AI-анализ недоступен без локальной модели.',
+      howCritical: 'AI-анализ недоступен.',
       whatToDo: `1. Установите Ollama: ollama.com\n2. Скачайте модель: ollama pull ${ollamaModel}\n3. Запустите сервер: ollama serve`,
       predictions: [],
     }

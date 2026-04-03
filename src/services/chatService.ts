@@ -1,5 +1,11 @@
+import Anthropic from '@anthropic-ai/sdk'
 import type { CityState } from '../types/city'
 import { streamOllamaChat, buildCitySystemPrompt } from './ollamaService'
+
+const anthropic = new Anthropic({
+  apiKey: import.meta.env.VITE_ANTHROPIC_API_KEY || '',
+  dangerouslyAllowBrowser: true,
+})
 
 export interface ChatMessage {
   id: string
@@ -13,7 +19,7 @@ export async function sendMessage(
   userMessage: string,
   state: CityState,
   onChunk: (text: string) => void,
-  _provider = 'ollama',
+  provider: 'claude' | 'ollama' = 'ollama',
   ollamaModel = 'llama3.2'
 ): Promise<string> {
   const messages = [
@@ -21,6 +27,25 @@ export async function sendMessage(
     { role: 'user' as const, content: userMessage },
   ]
 
+  // ── Claude ─────────────────────────────────────────────────────────────────
+  if (provider === 'claude' && import.meta.env.VITE_ANTHROPIC_API_KEY) {
+    const stream = await anthropic.messages.stream({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 800,
+      system: buildCitySystemPrompt(state),
+      messages,
+    })
+    let fullText = ''
+    for await (const chunk of stream) {
+      if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
+        fullText += chunk.delta.text
+        onChunk(fullText)
+      }
+    }
+    return fullText
+  }
+
+  // ── Ollama ─────────────────────────────────────────────────────────────────
   return streamOllamaChat(buildCitySystemPrompt(state), messages, ollamaModel, onChunk)
 }
 
