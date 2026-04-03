@@ -22,6 +22,9 @@ import { RoleSelector } from './components/RoleSelector'
 import { ExportButton } from './components/ExportButton'
 import { fetchEarthquakes, earthquakeToAlert } from './services/earthquakeService'
 import { fetchAlmatyAirStations, waqiStationToAlert } from './services/waqiService'
+import { fetchHereTrafficIncidents, hereIncidentToAlert } from './services/hereService'
+import { fetchOwmAirPollution, fetchOwmAirForecast, type OwmCurrentAir, type OwmAirForecast } from './services/owmService'
+import { fetchAlmatyTraffic, trafficToKpiValue, type RouteTraffic } from './services/twogisService'
 import { runCorrelationEngine, type CorrelationAlert } from './services/correlationEngine'
 import { predictKpi, type PredictionSeries } from './services/predictionEngine'
 
@@ -48,6 +51,9 @@ export default function App() {
   const [correlations, setCorrelations] = useState<CorrelationAlert[]>([])
   const [predictions, setPredictions] = useState<PredictionSeries[]>([])
   const [roleSelected, setRoleSelected] = useState(() => !!sessionStorage.getItem('sc_role'))
+  const [owmAir, setOwmAir] = useState<OwmCurrentAir | null>(null)
+  const [owmForecast, setOwmForecast] = useState<OwmAirForecast[]>([])
+  const [trafficRoutes, setTrafficRoutes] = useState<RouteTraffic[]>([])
   const [analysis, setAnalysis] = useState<AIAnalysis>({
     summary: '',
     whatHappening: '',
@@ -74,7 +80,7 @@ export default function App() {
     analyzeCity(state, partial => {
       setAnalysis(prev => ({ ...prev, ...partial }))
     }, 'ollama', ollamaModel)
-  }, [state, aiProvider, ollamaModel])
+  }, [state, ollamaModel])
 
   const addIncidentToState = useCallback((
     incident: NonNullable<Awaited<ReturnType<typeof generateIncident>>>
@@ -183,6 +189,68 @@ export default function App() {
           }
         }
         return updated
+      })
+    }
+    load()
+    const id = setInterval(load, 10 * 60 * 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  // HERE Traffic incidents every 2 min
+  useEffect(() => {
+    const load = async () => {
+      const incidents = await fetchHereTrafficIncidents()
+      if (incidents.length === 0) return
+      const alerts = incidents.map(hereIncidentToAlert)
+      setState(prev => {
+        const sec = prev.sectors['transport' as SectorKey]
+        if (!sec) return prev
+        const filtered = sec.alerts.filter(a => !a.id.startsWith('here_'))
+        return {
+          ...prev,
+          sectors: {
+            ...prev.sectors,
+            transport: { ...sec, alerts: [...alerts, ...filtered].slice(0, 15) },
+          },
+        }
+      })
+    }
+    load()
+    const id = setInterval(load, 2 * 60 * 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  // OpenWeatherMap air pollution every 30 min
+  useEffect(() => {
+    const load = async () => {
+      const [current, forecast] = await Promise.allSettled([
+        fetchOwmAirPollution(),
+        fetchOwmAirForecast(),
+      ])
+      if (current.status === 'fulfilled' && current.value) setOwmAir(current.value)
+      if (forecast.status === 'fulfilled') setOwmForecast(forecast.value)
+    }
+    load()
+    const id = setInterval(load, 30 * 60 * 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  // 2GIS traffic congestion every 10 min
+  useEffect(() => {
+    const load = async () => {
+      const routes = await fetchAlmatyTraffic()
+      if (routes.length === 0) return
+      setTrafficRoutes(routes)
+      const congestion = trafficToKpiValue(routes)
+      setState(prev => {
+        const sec = prev.sectors['transport' as SectorKey]
+        if (!sec) return prev
+        const kpis = sec.kpis.map(k =>
+          k.id === 'congestion'
+            ? { ...k, value: congestion, isLive: true, source: '2GIS Traffic' }
+            : k
+        )
+        return { ...prev, sectors: { ...prev.sectors, transport: { ...sec, kpis } } }
       })
     }
     load()
@@ -316,6 +384,8 @@ export default function App() {
                   <EcologyRealPanel
                     airQuality={realData.airQuality}
                     weather={realData.weather}
+                    owmAir={owmAir}
+                    owmForecast={owmForecast}
                   />
                 )}
                 <div className={`grid gap-6 ${activeTab === 'all' ? 'md:grid-cols-2' : 'grid-cols-1'}`}>
