@@ -49,7 +49,7 @@ ${alertLines}
 export async function analyzeCity(
   state: CityState,
   onUpdate?: (partial: Partial<AIAnalysis>) => void,
-  provider = 'ollama',
+  provider = 'claude',
   ollamaModel = OLLAMA_MODEL
 ): Promise<AIAnalysis> {
   onUpdate?.({ loading: true })

@@ -60,7 +60,7 @@ export default function App() {
   const [isCrisis, setIsCrisis] = useState(false)
   const [toasts, setToasts] = useState<Toast[]>([])
   const [realData, setRealData] = useState<RealCityData | null>(null)
-  const [aiProvider, setAiProvider] = useState<AIProvider>('ollama')
+  const [aiProvider, setAiProvider] = useState<AIProvider>('claude')
   const [ollamaModel, setOllamaModel] = useState('llama3.2')
   const [correlations, setCorrelations] = useState<CorrelationAlert[]>([])
   const [predictions, setPredictions] = useState<PredictionSeries[]>([])

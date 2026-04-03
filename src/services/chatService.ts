@@ -19,7 +19,7 @@ export async function sendMessage(
   userMessage: string,
   state: CityState,
   onChunk: (text: string) => void,
-  provider: 'claude' | 'ollama' = 'ollama',
+  provider: 'claude' | 'ollama' = 'claude',
   ollamaModel = 'llama3.2'
 ): Promise<string> {
   const messages = [
