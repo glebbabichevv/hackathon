@@ -1,73 +1,98 @@
-# React + TypeScript + Vite
+# Smart City Almaty Dashboard
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**AI-панель управленческих решений для города Алматы**
 
-Currently, two official plugins are available:
+> Хакатон-проект · MVP · 2024
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## Что это
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Аналитическая система для мониторинга состояния города в реальном времени и поддержки принятия управленческих решений. Объединяет данные из 8+ источников по 4 секторам: транспорт, экология, безопасность, ЖКХ.
 
-## Expanding the ESLint configuration
+**Отвечает на 3 управленческих вопроса:**
+1. Что происходит в городе прямо сейчас?
+2. Насколько это критично?
+3. Какие действия необходимо предпринять?
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+---
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Быстрый старт
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Для AI-функций (анализ, чат, генерация инцидентов):
+```bash
+ollama pull llama3.2
+ollama serve
 ```
+
+---
+
+## Технологии
+
+| Слой | Технологии |
+|------|-----------|
+| Frontend | React 19, TypeScript, Vite, Tailwind CSS |
+| Графики | Recharts (Area, Radar charts) |
+| Карта | Leaflet + react-leaflet, CartoDB dark tiles |
+| AI | Ollama (llama3.2, mistral, qwen2.5) — локально, без интернета |
+| Алгоритмы | Z-score + IQR аномалии, линейная регрессия (прогноз), 6 правил корреляций |
+
+---
+
+## Реальные источники данных
+
+| Источник | Данные | Ключ |
+|----------|--------|------|
+| Open-Meteo | Погода, температура, влажность, ветер | Не нужен |
+| Open-Meteo CAMS | PM2.5, PM10, NO₂, O₃, AQI | Не нужен |
+| USGS GeoJSON | Землетрясения M≥2.5 в регионе | Не нужен |
+| WAQI | Станции AQI по районам Алматы | `VITE_WAQI_TOKEN` |
+| HERE Traffic | ДТП и перекрытия дорог, каждые 2 мин | `VITE_HERE_API_KEY` |
+| OpenWeatherMap | AQI + 6-часовой прогноз | `VITE_OWM_KEY` |
+| 2GIS Routing | Загруженность ключевых маршрутов | `VITE_2GIS_KEY` |
+| Nominatim | Геокодинг адресов | Не нужен |
+
+---
+
+## AI-функциональность
+
+- **AI-Аналитик** — анализирует все KPI и инциденты, генерирует ответы на 3 управленческих вопроса + 3 прогноза
+- **AI Чат** — отвечает на любые вопросы о состоянии города с учётом текущих данных
+- **Детектор аномалий** — Z-score > 2.0 + IQR фильтр по истории 24 часов
+- **Движок прогнозов** — линейная регрессия, горизонт +1ч/+2ч/+4ч для критичных KPI
+- **Движок корреляций** — 6 кросс-доменных правил (дождь+пробки, AQI+безветрие, нагрузка сети и др.)
+- **Генерация инцидентов** — Ollama создаёт реалистичные городские инциденты каждые 60 сек
+
+---
+
+## Ключевые функции UI
+
+- **Выбор роли при входе** — Аким, транспорт, экология, ЖКХ, безопасность (KZ+RU)
+- **Интерактивная карта** — реальные ДТП (HERE), землетрясения (USGS), AQI-станции (WAQI)
+- **Live data ticker** — бегущая строка с реальными данными в реальном времени
+- **Симуляция кризиса** — одна кнопка запускает 3 параллельных инцидента
+- **Голосовое зачитывание** — Web Speech API, русский язык
+- **Экспорт отчёта** — скачивание HTML-отчёта для печати/PDF
+
+---
+
+## Структура проекта
+
+```
+src/
+├── components/     # UI компоненты (14 шт.)
+├── services/       # Интеграции и алгоритмы (11 сервисов)
+├── data/           # Mock данные и генераторы
+└── types/          # TypeScript типы
+```
+
+---
+
+## Репозиторий
+
+https://github.com/glebbabichevv/hackathon
