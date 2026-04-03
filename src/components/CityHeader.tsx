@@ -8,6 +8,8 @@ interface Props {
   currentDate: string
   weather?: WeatherData | null
   dataFetchedAt?: string
+  roleLabel?: string
+  roleIcon?: string
 }
 
 const scoreColor = (score: number) => {
@@ -24,7 +26,7 @@ const scoreLabel = (score: number) => {
   return 'КРИЗИС'
 }
 
-export function CityHeader({ state, onRefresh, currentTime, currentDate, weather, dataFetchedAt }: Props) {
+export function CityHeader({ state, onRefresh, currentTime, currentDate, weather, dataFetchedAt, roleLabel, roleIcon }: Props) {
   const color = scoreColor(state.overallScore)
   const label = scoreLabel(state.overallScore)
 
@@ -47,6 +49,14 @@ export function CityHeader({ state, onRefresh, currentTime, currentDate, weather
               <p className="text-[10px] text-slate-500">{state.city} · Панель управленческих решений</p>
             </div>
           </div>
+
+          {/* Бейдж текущей роли */}
+          {roleLabel && (
+            <div className="hidden md:flex items-center gap-1.5 bg-cyan-400/10 border border-cyan-400/30 rounded-full px-2.5 py-1">
+              {roleIcon && <span className="text-sm">{roleIcon}</span>}
+              <span className="text-[11px] font-semibold text-cyan-300">{roleLabel}</span>
+            </div>
+          )}
 
           <div className="hidden md:block w-px h-8 bg-[#1a3050]" />
 

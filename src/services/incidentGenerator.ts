@@ -75,7 +75,7 @@ export async function generateIncident(state: CityState): Promise<Alert | null> 
   try {
     let fullText = ''
     await streamOllamaChat(
-      'Ты — система генерации городских инцидентов. Отвечай строго в JSON формате без markdown.',
+      'Ты — система генерации городских инцидентов Алматы. Отвечай СТРОГО на русском языке. JSON формат без markdown.',
       [{ role: 'user', content: prompt }],
       OLLAMA_MODEL,
       partial => { fullText = partial }

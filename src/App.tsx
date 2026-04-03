@@ -23,9 +23,23 @@ import { fetchEarthquakes, earthquakeToAlert } from './services/earthquakeServic
 import { fetchAlmatyAirStations, waqiStationToAlert } from './services/waqiService'
 import { fetchHereTrafficIncidents, hereIncidentToAlert } from './services/hereService'
 import { fetchOwmAirPollution, fetchOwmAirForecast, type OwmCurrentAir, type OwmAirForecast } from './services/owmService'
-import { fetchAlmatyTraffic, trafficToKpiValue, type RouteTraffic } from './services/twogisService'
+import { fetchAlmatyTraffic, trafficToKpiValue, trafficRoutesToAlerts, type RouteTraffic } from './services/twogisService'
+import { fetchNewsIncidents } from './services/newsIncidentService'
+import { fetchLowAltitudeAircraft, aircraftToAlert } from './services/openSkyService'
 import { runCorrelationEngine, type CorrelationAlert } from './services/correlationEngine'
 import { predictKpi, type PredictionSeries } from './services/predictionEngine'
+import { detectAnomaly } from './services/anomalyDetector'
+
+export interface AnomalyItem {
+  kpiId: string
+  kpiLabel: string
+  sectorKey: string
+  sectorLabel: string
+  zScore: number
+  direction: 'up' | 'down' | 'stable'
+  currentValue: number
+  unit: string
+}
 
 const TABS = [
   { id: 'all', label: 'Все секторы' },
@@ -51,6 +65,9 @@ export default function App() {
   const [correlations, setCorrelations] = useState<CorrelationAlert[]>([])
   const [predictions, setPredictions] = useState<PredictionSeries[]>([])
   const [roleSelected, setRoleSelected] = useState(() => !!sessionStorage.getItem('sc_role'))
+  const [roleLabel, setRoleLabel] = useState(() => sessionStorage.getItem('sc_role_label') ?? '')
+  const [roleIcon, setRoleIcon] = useState(() => sessionStorage.getItem('sc_role_icon') ?? '')
+  const [anomalies, setAnomalies] = useState<AnomalyItem[]>([])
   const [owmAir, setOwmAir] = useState<OwmCurrentAir | null>(null)
   const [owmForecast, setOwmForecast] = useState<OwmAirForecast[]>([])
   const [trafficRoutes, setTrafficRoutes] = useState<RouteTraffic[]>([])
@@ -64,7 +81,33 @@ export default function App() {
   })
 
   const pendingAnalysis = useRef(0)
-  const allAlerts = Object.values(state.sectors).flatMap(s => s.alerts)
+  const sectorAlerts = Object.values(state.sectors).flatMap(s => s.alerts)
+
+  // Координаты для корреляционных алертов на карте (по сектору)
+  const CORR_COORDS: Record<string, [number, number]> = {
+    transport: [43.2600, 76.9380],
+    ecology:   [43.2900, 76.8900],
+    safety:    [43.2680, 76.9420],
+    utilities: [43.2510, 76.9460],
+  }
+  const correlationMapAlerts = correlations.map(c => {
+    const mainSector = (c.sectors[0] ?? 'safety') as import('./types/city').SectorKey
+    const [lat, lng] = CORR_COORDS[mainSector] ?? [43.257, 76.940]
+    return {
+      id: c.id,
+      sector: mainSector,
+      title: c.title,
+      description: c.description,
+      severity: c.severity,
+      timestamp: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
+      actionRequired: c.recommendation,
+      lat, lng,
+      source: `AI Корреляция (${c.confidence}%)`,
+    } satisfies import('./types/city').Alert
+  })
+
+  const trafficMapAlerts = trafficRoutesToAlerts(trafficRoutes)
+  const allAlerts = [...sectorAlerts, ...correlationMapAlerts, ...trafficMapAlerts]
 
   // ── Живые часы — тикают каждую секунду ─────────────────────────────────────
   useEffect(() => {
@@ -85,7 +128,17 @@ export default function App() {
   }, [])
 
   const handleRefreshData = useCallback(() => {
-    setState(refreshData())
+    setState(prev => {
+      const updated = JSON.parse(JSON.stringify(prev)) as CityState
+      updated.timestamp = new Date().toLocaleString('ru-RU')
+      Object.values(updated.sectors).forEach(sector => {
+        sector.kpis.forEach(kpi => {
+          const delta = (Math.random() - 0.5) * kpi.value * 0.03
+          kpi.value = Math.round((kpi.value + delta) * 10) / 10
+        })
+      })
+      return updated
+    })
   }, [])
 
   const handleAnalyze = useCallback(() => {
@@ -128,9 +181,9 @@ export default function App() {
     ])
   }, [])
 
-  // ── Генерация инцидента каждые 60 сек ──────────────────────────────────────
+  // ── Генерация инцидентов: 3 сразу при старте + по одному каждые 60 сек ──────
   useEffect(() => {
-    const id = setInterval(async () => {
+    const generate = async () => {
       if (isGenerating) return
       setIsGenerating(true)
       try {
@@ -146,9 +199,16 @@ export default function App() {
       } finally {
         setIsGenerating(false)
       }
-    }, 60000)
+    }
+
+    // 3 инцидента при старте с небольшим разбросом
+    setTimeout(generate, 500)
+    setTimeout(generate, 2500)
+    setTimeout(generate, 5000)
+
+    const id = setInterval(generate, 60000)
     return () => clearInterval(id)
-  }, [state, isGenerating, addIncidentToState, handleAnalyze])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── KPI флуктуации каждые 30 сек ───────────────────────────────────────────
   useEffect(() => {
@@ -180,7 +240,7 @@ export default function App() {
       ])
       const newAlerts = [
         ...(quakes.status === 'fulfilled' ? quakes.value.slice(0, 5).map(earthquakeToAlert) : []),
-        ...(stations.status === 'fulfilled' ? stations.value.map(waqiStationToAlert).filter(Boolean) as any[] : []),
+        ...(stations.status === 'fulfilled' ? stations.value.map(waqiStationToAlert).filter((a): a is NonNullable<typeof a> => a !== null) : []),
       ]
       if (newAlerts.length === 0) return
       setState(prev => {
@@ -264,20 +324,98 @@ export default function App() {
     return () => clearInterval(id)
   }, [])
 
-  // ── Корреляции + прогнозы при изменении данных ─────────────────────────────
+  // ── RSS новости → Ollama → Nominatim (каждые 15 мин) ──────────────────────
+  useEffect(() => {
+    const load = async () => {
+      const newsAlerts = await fetchNewsIncidents()
+      if (newsAlerts.length === 0) return
+      setState(prev => {
+        const updated = { ...prev, sectors: { ...prev.sectors } }
+        // Сначала чистим все старые news_ алерты во всех секторах
+        for (const key of Object.keys(updated.sectors) as SectorKey[]) {
+          updated.sectors[key] = {
+            ...updated.sectors[key],
+            alerts: updated.sectors[key].alerts.filter(a => !a.id.startsWith('news_')),
+          }
+        }
+        // Добавляем новые (до 30 суммарно)
+        for (const alert of newsAlerts.slice(0, 30)) {
+          const sec = updated.sectors[alert.sector as SectorKey]
+          if (!sec) continue
+          updated.sectors[alert.sector as SectorKey] = {
+            ...sec,
+            alerts: [alert, ...sec.alerts].slice(0, 35),
+          }
+        }
+        return updated
+      })
+    }
+    load()
+    const id = setInterval(load, 15 * 60 * 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  // ── OpenSky авиация (каждые 5 мин) ─────────────────────────────────────────
+  useEffect(() => {
+    const load = async () => {
+      const aircraft = await fetchLowAltitudeAircraft()
+      if (aircraft.length === 0) return
+      const alerts = aircraft.map(aircraftToAlert)
+      setState(prev => {
+        const sec = prev.sectors['safety' as SectorKey]
+        if (!sec) return prev
+        const filtered = sec.alerts.filter(a => !a.id.startsWith('opensky_'))
+        return {
+          ...prev,
+          sectors: {
+            ...prev.sectors,
+            safety: { ...sec, alerts: [...alerts, ...filtered].slice(0, 12) },
+          },
+        }
+      })
+    }
+    load()
+    const id = setInterval(load, 5 * 60 * 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  // ── Корреляции + прогнозы + аномалии при изменении данных ──────────────────
   useEffect(() => {
     if (!realData) return
     setCorrelations(runCorrelationEngine(state, realData.weather))
+
     const preds: PredictionSeries[] = []
+    const detectedAnomalies: AnomalyItem[] = []
+
     for (const sector of Object.values(state.sectors)) {
       for (const kpi of sector.kpis) {
         const hist = sector.history[kpi.id]
-        if (!hist || kpi.severity === 'good') continue
-        const series = predictKpi(hist, kpi.id, kpi.label, kpi.unit, kpi.threshold)
-        if (series?.willExceedThreshold) preds.push(series)
+        if (!hist) continue
+
+        // Прогнозы
+        if (kpi.severity !== 'good') {
+          const series = predictKpi(hist, kpi.id, kpi.label, kpi.unit, kpi.threshold)
+          if (series?.willExceedThreshold) preds.push(series)
+        }
+
+        // Аномалии Z-score
+        const anomaly = detectAnomaly(hist, kpi.value)
+        if (anomaly?.isAnomaly) {
+          detectedAnomalies.push({
+            kpiId: kpi.id,
+            kpiLabel: kpi.label,
+            sectorKey: sector.key,
+            sectorLabel: sector.label,
+            zScore: anomaly.zScore,
+            direction: anomaly.direction,
+            currentValue: kpi.value,
+            unit: kpi.unit,
+          })
+        }
       }
     }
     setPredictions(preds.slice(0, 6))
+    setAnomalies(detectedAnomalies.sort((a, b) => b.zScore - a.zScore).slice(0, 5))
   }, [state, realData])
 
   // ── Первичный AI-анализ при загрузке ───────────────────────────────────────
@@ -317,7 +455,11 @@ export default function App() {
       {!roleSelected && (
         <RoleSelector onSelect={role => {
           sessionStorage.setItem('sc_role', role.id)
+          sessionStorage.setItem('sc_role_label', role.label)
+          sessionStorage.setItem('sc_role_icon', role.icon ?? '')
           setRoleSelected(true)
+          setRoleLabel(role.label)
+          setRoleIcon(role.icon ?? '')
           if (role.focus !== 'all') setActiveTab(role.focus)
         }} />
       )}
@@ -328,6 +470,8 @@ export default function App() {
         currentDate={currentDate}
         weather={realData?.weather}
         dataFetchedAt={realData?.fetchedAt}
+        roleLabel={roleLabel || undefined}
+        roleIcon={roleIcon || undefined}
       />
 
       {realData && <LiveDataBar data={realData} />}
@@ -411,7 +555,9 @@ export default function App() {
               onModelChange={setOllamaModel}
             />
             <AIAdvisor analysis={analysis} onRefresh={handleAnalyze} provider={aiProvider} />
-            {correlations.length > 0 && <CorrelationPanel correlations={correlations} />}
+            {(correlations.length > 0 || anomalies.length > 0) && (
+              <CorrelationPanel correlations={correlations} anomalies={anomalies} />
+            )}
             {predictions.length > 0 && <PredictionPanel predictions={predictions} />}
             <OverviewRadar state={state} />
 

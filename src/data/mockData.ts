@@ -1,16 +1,50 @@
 import type { CityState, Sector, TimePoint } from '../types/city'
 
-// Generate realistic time series data for last 24 hours
-function genHistory(base: number, variance: number, spike?: { hour: number; val: number }): TimePoint[] {
+type HistoryPattern = 'traffic' | 'electricity' | 'noise' | 'incidents' | 'flat'
+
+// Умная история с паттернами по времени суток
+function genSmartHistory(base: number, pattern: HistoryPattern, jitter = 0.04): TimePoint[] {
   const now = new Date()
   return Array.from({ length: 24 }, (_, i) => {
     const h = new Date(now.getTime() - (23 - i) * 3600000)
-    const label = `${h.getHours().toString().padStart(2, '0')}:00`
-    let v = base + (Math.random() - 0.5) * variance
-    if (spike && i === spike.hour) v = spike.val
+    const hour = h.getHours()
+    const label = `${hour.toString().padStart(2, '0')}:00`
+    let multiplier = 1.0
+
+    if (pattern === 'traffic') {
+      // Утренний пик 8-9, вечерний 18-19, ночью почти нет
+      if (hour >= 8 && hour <= 9) multiplier = 1.45
+      else if (hour >= 18 && hour <= 19) multiplier = 1.40
+      else if (hour >= 7 && hour <= 10) multiplier = 1.20
+      else if (hour >= 16 && hour <= 20) multiplier = 1.25
+      else if (hour >= 12 && hour <= 13) multiplier = 1.10  // обеденный
+      else if (hour >= 0 && hour <= 5) multiplier = 0.18
+      else if (hour >= 22 || hour <= 6) multiplier = 0.30
+    } else if (pattern === 'electricity') {
+      // Пик 9-21, минимум ночью
+      if (hour >= 9 && hour <= 12) multiplier = 1.12
+      else if (hour >= 18 && hour <= 21) multiplier = 1.18  // вечерний пик освещение
+      else if (hour >= 0 && hour <= 5) multiplier = 0.55
+      else if (hour >= 6 && hour <= 8) multiplier = 0.80
+    } else if (pattern === 'noise') {
+      // Тихо ночью, громко днём и вечером
+      if (hour >= 8 && hour <= 22) multiplier = 0.90 + (hour - 8) * 0.012
+      else if (hour >= 0 && hour <= 5) multiplier = 0.45
+      else multiplier = 0.60
+    } else if (pattern === 'incidents') {
+      // Пик вечером (18-23), минимум утром
+      if (hour >= 18 && hour <= 23) multiplier = 1.35
+      else if (hour >= 22 || hour <= 2) multiplier = 1.20
+      else if (hour >= 3 && hour <= 7) multiplier = 0.50
+    }
+    // 'flat' — slight random only
+
+    const noise = (Math.random() - 0.5) * base * jitter
+    const v = Math.max(0, base * multiplier + noise)
     return { time: label, value: Math.round(v * 10) / 10 }
   })
 }
+
 
 const transportSector: Sector = {
   key: 'transport',
@@ -60,35 +94,12 @@ const transportSector: Sector = {
     },
   ],
   history: {
-    traffic_congestion: genHistory(55, 20, { hour: 17, val: 91 }),
-    avg_speed: genHistory(38, 15, { hour: 17, val: 18 }),
-    accidents: genHistory(3, 3, { hour: 17, val: 7 }),
-    public_transport: genHistory(75, 15, { hour: 7, val: 55 }),
+    traffic_congestion: genSmartHistory(55, 'traffic'),
+    avg_speed: genSmartHistory(38, 'traffic', 0.06).map(p => ({ ...p, value: Math.round((60 - p.value * 0.55) * 10) / 10 })),
+    accidents: genSmartHistory(3, 'incidents'),
+    public_transport: genSmartHistory(75, 'flat', 0.08),
   },
-  alerts: [
-    {
-      id: 'tr_1',
-      sector: 'transport',
-      title: 'Критический затор на Ленинском проспекте',
-      description: 'Пробка 9 баллов, скорость потока 12 км/ч. Причина: ДТП с участием 3 автомобилей.',
-      severity: 'critical',
-      timestamp: '08:47',
-      location: 'Ленинский просп., 45–52',
-      actionRequired: 'Перенаправить трафик через ул. Победы. Выслать эвакуатор.',
-      lat: 43.2507, lng: 76.9152,
-    },
-    {
-      id: 'tr_2',
-      sector: 'transport',
-      title: 'Нарушение графика трамваев №5 и №8',
-      description: 'Задержка 15–22 мин, интервал увеличен вдвое.',
-      severity: 'warning',
-      timestamp: '07:30',
-      location: 'Маршруты №5, №8',
-      actionRequired: 'Выпустить резервные составы. Уведомить пассажиров через табло.',
-      lat: 43.2555, lng: 76.9310,
-    },
-  ],
+  alerts: [],
 }
 
 const ecologySector: Sector = {
@@ -139,24 +150,12 @@ const ecologySector: Sector = {
     },
   ],
   history: {
-    aqi: genHistory(85, 40, { hour: 20, val: 168 }),
-    co2: genHistory(430, 60),
-    noise: genHistory(62, 15, { hour: 18, val: 78 }),
-    water_quality: genHistory(96, 4),
+    aqi: genSmartHistory(85, 'traffic', 0.12),  // AQI хуже в час пик
+    co2: genSmartHistory(430, 'traffic', 0.08),
+    noise: genSmartHistory(62, 'noise'),
+    water_quality: genSmartHistory(96, 'flat', 0.02),
   },
-  alerts: [
-    {
-      id: 'ec_1',
-      sector: 'ecology',
-      title: 'Превышение PM2.5 в Северном районе',
-      description: 'AQI достиг 168 — уровень "Вредный". Источник: промзона + безветрие.',
-      severity: 'critical',
-      timestamp: '20:15',
-      location: 'Северный р-н, ст. Заводская',
-      actionRequired: 'Ограничить выбросы предприятий. Рекомендовать жителям оставаться дома.',
-      lat: 43.3055, lng: 76.9420,
-    },
-  ],
+  alerts: [],
 }
 
 const safetySector: Sector = {
@@ -207,34 +206,12 @@ const safetySector: Sector = {
     },
   ],
   history: {
-    incidents: genHistory(16, 8, { hour: 22, val: 31 }),
-    response_time: genHistory(8.5, 3, { hour: 17, val: 14 }),
-    cctv: genHistory(86, 5),
-    fire_hazard: genHistory(2, 2),
+    incidents: genSmartHistory(16, 'incidents'),
+    response_time: genSmartHistory(8.5, 'traffic', 0.10),  // хуже в пробки
+    cctv: genSmartHistory(86, 'flat', 0.02),
+    fire_hazard: genSmartHistory(2, 'flat', 0.20),
   },
-  alerts: [
-    {
-      id: 'sf_1',
-      sector: 'safety',
-      title: 'Рост правонарушений в ночное время',
-      description: '5 инцидентов за последние 2 часа в Восточном районе (+150% к норме).',
-      severity: 'critical',
-      timestamp: '22:30',
-      location: 'Восточный р-н, ул. Мира',
-      actionRequired: 'Усилить патрулирование. Активировать дополнительные камеры в секторе.',
-      lat: 43.2680, lng: 77.0055,
-    },
-    {
-      id: 'sf_2',
-      sector: 'safety',
-      title: 'Перегрузка диспетчерской 112',
-      description: 'Среднее время ожидания ответа 4.2 мин (норма < 1 мин).',
-      severity: 'warning',
-      timestamp: '21:55',
-      actionRequired: 'Задействовать резервных операторов. Переключить часть вызовов.',
-      lat: 43.2620, lng: 76.9380,
-    },
-  ],
+  alerts: [],
 }
 
 const utilitiesSector: Sector = {
@@ -246,11 +223,11 @@ const utilitiesSector: Sector = {
     {
       id: 'electricity',
       label: 'Потребление эл-энергии',
-      value: 94,
+      value: 82,
       unit: '% мощн.',
-      trend: +8,
+      trend: +3,
       threshold: { warning: 85, critical: 95 },
-      severity: 'warning',
+      severity: 'normal',
       description: 'Загрузка электросети от максимума',
     },
     {
@@ -285,45 +262,12 @@ const utilitiesSector: Sector = {
     },
   ],
   history: {
-    electricity: genHistory(78, 18, { hour: 19, val: 97 }),
-    water_pressure: genHistory(3.8, 0.6, { hour: 6, val: 2.8 }),
-    outages: genHistory(1, 2, { hour: 14, val: 5 }),
-    heating: genHistory(98, 3),
+    electricity: genSmartHistory(68, 'electricity'),
+    water_pressure: genSmartHistory(3.8, 'flat', 0.06),
+    outages: genSmartHistory(1, 'flat', 0.40),
+    heating: genSmartHistory(98, 'flat', 0.02),
   },
-  alerts: [
-    {
-      id: 'ut_1',
-      sector: 'utilities',
-      title: 'Пиковая нагрузка на электросеть',
-      description: 'Потребление 94% от расчётной мощности. Риск каскадного отключения.',
-      severity: 'critical',
-      timestamp: '19:05',
-      actionRequired: 'Включить резервные подстанции. Ввести лимит для промышленных потребителей.',
-      lat: 43.2580, lng: 76.9450,
-    },
-    {
-      id: 'ut_2',
-      sector: 'utilities',
-      title: 'Прорыв водопровода на ул. Гагарина',
-      description: 'Падение давления на 18%. ~2400 жителей без горячей воды.',
-      severity: 'critical',
-      timestamp: '06:12',
-      location: 'Ул. Гагарина, д. 18',
-      actionRequired: 'Выслать аварийную бригаду. Подать водовозы в затронутые дома.',
-      lat: 43.2420, lng: 76.9530,
-    },
-    {
-      id: 'ut_3',
-      sector: 'utilities',
-      title: 'Плановая замена труб задерживается',
-      description: 'Ремонт ул. Советская: отставание от графика 5 дней.',
-      severity: 'warning',
-      timestamp: '14:00',
-      location: 'Ул. Советская, 31–47',
-      actionRequired: 'Согласовать дополнительные ресурсы подрядчика.',
-      lat: 43.2710, lng: 76.9480,
-    },
-  ],
+  alerts: [],
 }
 
 export const cityData: CityState = {

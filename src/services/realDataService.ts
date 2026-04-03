@@ -1,5 +1,4 @@
-// Open-Meteo APIs — бесплатно, без ключа, глобальное покрытие
-// Данные CAMS (Copernicus Atmosphere Monitoring Service) + ERA5
+// Погода: OWM (станции, точно) + Open-Meteo (резерв) + AQI: CAMS Copernicus
 
 const LAT = 43.257
 const LON = 76.940
@@ -62,16 +61,22 @@ function aqiToLabel(aqi: number): { label: string; color: string } {
 
 export async function fetchRealData(): Promise<RealCityData | null> {
   try {
-    const [weatherRes, aqRes] = await Promise.allSettled([
+    // Импортируем OWM погоду динамически чтобы избежать циклических зависимостей
+    const { fetchOwmCurrentWeather } = await import('./owmService')
+
+    const [owmWeatherResult, openMeteoWeatherRes, aqRes] = await Promise.allSettled([
+      fetchOwmCurrentWeather(),   // OWM — реальные метеостанции, приоритет
       fetch(
         `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}` +
         `&current=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,precipitation,weather_code` +
-        `&wind_speed_unit=kmh&timezone=Asia%2FAlmaty`
+        `&wind_speed_unit=kmh&timezone=Asia%2FAlmaty`,
+        { cache: 'no-store', signal: AbortSignal.timeout(6000) }
       ),
       fetch(
         `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${LAT}&longitude=${LON}` +
         `&current=pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,ozone,european_aqi` +
-        `&timezone=Asia%2FAlmaty`
+        `&timezone=Asia%2FAlmaty`,
+        { cache: 'no-store', signal: AbortSignal.timeout(6000) }
       ),
     ])
 
@@ -79,8 +84,25 @@ export async function fetchRealData(): Promise<RealCityData | null> {
     let airQuality: AirQualityData | null = null
     const sources: string[] = []
 
-    if (weatherRes.status === 'fulfilled' && weatherRes.value.ok) {
-      const j = await weatherRes.value.json()
+    // Приоритет: OWM (реальная станция) → Open-Meteo (модель)
+    const owmW = owmWeatherResult.status === 'fulfilled' ? owmWeatherResult.value : null
+    if (owmW) {
+      weather = {
+        temperature: owmW.temperature,
+        humidity: owmW.humidity,
+        windSpeed: owmW.windSpeed,
+        windDirection: owmW.windDirection,
+        precipitation: owmW.precipitation,
+        weatherCode: owmW.owmCode,
+        isRaining: owmW.isRaining,
+        isSnowing: owmW.isSnowing,
+        isFoggy: owmW.isFoggy,
+        icon: owmW.icon,
+        condition: owmW.condition,
+      }
+      sources.push('OpenWeatherMap Station')
+    } else if (openMeteoWeatherRes.status === 'fulfilled' && openMeteoWeatherRes.value.ok) {
+      const j = await openMeteoWeatherRes.value.json()
       const c = j.current
       const code = c.weather_code as number
       const info = weatherCodeToInfo(code)
@@ -97,11 +119,11 @@ export async function fetchRealData(): Promise<RealCityData | null> {
         icon: info.icon,
         condition: info.condition,
       }
-      sources.push('Open-Meteo Weather')
+      sources.push('Open-Meteo Weather (резерв)')
     }
 
-    if (aqRes.status === 'fulfilled' && aqRes.value.ok) {
-      const j = await aqRes.value.json()
+    if (aqRes.status === 'fulfilled' && (aqRes.value as Response).ok) {
+      const j = await (aqRes.value as Response).json()
       const c = j.current
       const aqi = Math.round(c.european_aqi ?? 0)
       const aqiInfo = aqiToLabel(aqi)

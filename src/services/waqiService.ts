@@ -32,19 +32,21 @@ export async function fetchAlmatyAirStations(): Promise<WaqiStation[]> {
 }
 
 export function waqiStationToAlert(station: WaqiStation): Alert | null {
-  if (station.aqi < 50) return null
-  const severity = station.aqi >= 150 ? 'critical' : station.aqi >= 100 ? 'warning' : 'normal'
+  const severity = station.aqi >= 150 ? 'critical' : station.aqi >= 100 ? 'warning' : station.aqi >= 50 ? 'normal' : 'good'
+  const aqiLabel = station.aqi >= 150 ? 'Опасно' : station.aqi >= 100 ? 'Нездоровый' : station.aqi >= 50 ? 'Умеренный' : 'Хороший'
   return {
     id: `waqi_${station.name.replace(/\W/g, '_')}`,
     sector: 'ecology',
     title: `AQI ${station.aqi} — ${station.name}`,
-    description: `Станция мониторинга воздуха. WAQI: ${station.aqi}. ${station.aqi >= 150 ? 'Опасный уровень загрязнения.' : 'Нездоровый уровень для чувствительных групп.'}`,
+    description: `Станция мониторинга воздуха. ${aqiLabel} уровень загрязнения.`,
     severity,
     timestamp: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
     location: station.name,
     actionRequired: severity === 'critical'
       ? 'Ограничить выбросы предприятий. Рекомендовать маски жителям. Закрыть окна.'
-      : 'Усилить мониторинг. Ограничить промышленные выбросы.',
+      : severity === 'warning'
+        ? 'Усилить мониторинг. Ограничить промышленные выбросы.'
+        : 'Продолжать мониторинг в штатном режиме.',
     lat: station.lat,
     lng: station.lng,
     isGenerated: false,

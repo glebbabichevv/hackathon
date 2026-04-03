@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@2gis/mapgl": "^1.72.0",
+    "@2gis/mapgl-directions": "^2.2.1",
     "@anthropic-ai/sdk": "^0.82.0",
     "@types/leaflet": "^1.9.21",
     "clsx": "^2.1.1",

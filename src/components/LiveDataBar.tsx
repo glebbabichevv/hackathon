@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { RealCityData } from '../services/realDataService'
 
 interface Props {
@@ -16,6 +16,15 @@ function aqiColor(aqi: number): string {
 export function LiveDataBar({ data }: Props) {
   const { weather, airQuality, fetchedAt } = data
   const trackRef = useRef<HTMLDivElement>(null)
+  const [liveTime, setLiveTime] = useState(() => new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' }))
+
+  // Живой таймер в ленте — тикает каждую секунду
+  useEffect(() => {
+    const id = setInterval(() => {
+      setLiveTime(new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' }))
+    }, 1000)
+    return () => clearInterval(id)
+  }, [])
 
   // Анимация бесконечного скролла
   useEffect(() => {
@@ -45,8 +54,9 @@ export function LiveDataBar({ data }: Props) {
     { icon: '🏭', label: 'NO₂', value: `${airQuality.no2} мкг/м³`, warn: airQuality.no2 > 40 },
     { icon: '⚗️', label: 'O₃', value: `${airQuality.ozone} мкг/м³` },
     { icon: '🌫️', label: 'CO', value: `${airQuality.co} мг/м³` },
-    { icon: '📡', label: 'Источник', value: 'Open-Meteo · CAMS Copernicus' },
-    { icon: '🕐', label: 'Обновлено', value: fetchedAt },
+    { icon: '📡', label: 'Источник', value: 'OWM · Open-Meteo · CAMS · USGS · WAQI' },
+    { icon: '🕐', label: 'Дата данных', value: fetchedAt },
+    { icon: '⏱️', label: 'Сейчас', value: liveTime },
   ]
 
   // Дублируем для бесшовного скролла

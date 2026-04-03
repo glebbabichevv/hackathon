@@ -22,7 +22,7 @@ export async function fetchHereTrafficIncidents(): Promise<HereIncident[]> {
   try {
     const url = `https://data.traffic.hereapi.com/v7/incidents` +
       `?apiKey=${HERE_KEY}` +
-      `&in=circle:${ALMATY_LAT},${ALMATY_LON};r=${RADIUS}` +
+      `&in=bbox:76.7,43.1,77.1,43.4` +
       `&locationReferencing=shape`
 
     const res = await fetch(url)

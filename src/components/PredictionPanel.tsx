@@ -24,10 +24,11 @@ export function PredictionPanel({ predictions }: Props) {
 
       <div className="flex flex-col gap-4">
         {relevant.map(series => {
-          const maxRisk = series.predictions.reduce((worst, p) => {
+          const _maxRisk = series.predictions.reduce((worst, p) => {
             const order = { critical: 3, warning: 2, normal: 1 }
             return order[p.riskLevel] > order[worst] ? p.riskLevel : worst
           }, 'normal' as 'critical' | 'warning' | 'normal')
+          void _maxRisk
 
           return (
             <div key={series.kpiId} className="flex flex-col gap-2">

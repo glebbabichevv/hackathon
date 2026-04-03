@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { streamOllamaChat, buildCitySystemPrompt } from './ollamaService'
+import { streamOllamaChat } from './ollamaService'
 import type { CityState, AIAnalysis } from '../types/city'
 
 const OLLAMA_MODEL = import.meta.env.VITE_OLLAMA_MODEL || 'llama3.2'
@@ -87,7 +87,7 @@ export async function analyzeCity(
       const stream = await anthropic.messages.stream({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 1024,
-        system: 'Ты — AI-аналитик умного города. Отвечай ТОЛЬКО валидным JSON без markdown, без ```.',
+        system: 'Ты — AI-аналитик умного города Алматы. Отвечай СТРОГО на русском языке. ТОЛЬКО валидный JSON без markdown, без ```.',
         messages: [{ role: 'user', content: buildAnalysisPrompt(state) }],
       })
       let fullText = ''
@@ -117,20 +117,63 @@ export async function analyzeCity(
     if (result) { onUpdate?.(result); return result }
     throw new Error('JSON не найден в ответе модели')
 
-  } catch (err) {
-    const error = err instanceof Error ? err.message : 'Ошибка AI'
-    const isNotRunning = error.includes('fetch') || error.includes('Failed')
-
-    const result: AIAnalysis = {
-      ...fallback,
-      error: isNotRunning ? 'Ollama не запущена. Запустите: ollama serve' : error,
-      summary: 'AI недоступен',
-      whatHappening: `Запустите Ollama: ollama serve && ollama pull ${ollamaModel}`,
-      howCritical: 'AI-анализ недоступен.',
-      whatToDo: `1. Установите Ollama: ollama.com\n2. Скачайте модель: ollama pull ${ollamaModel}\n3. Запустите сервер: ollama serve`,
-      predictions: [],
+  } catch (ollamaErr) {
+    // ── Ollama упала → пробуем Claude как fallback ─────────────────────────
+    if (provider === 'ollama' && import.meta.env.VITE_ANTHROPIC_API_KEY) {
+      try {
+        const stream = await anthropic.messages.stream({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 1024,
+          system: 'Ты — AI-аналитик умного города Алматы. Отвечай СТРОГО на русском языке. ТОЛЬКО валидный JSON без markdown, без ```.',
+          messages: [{ role: 'user', content: buildAnalysisPrompt(state) }],
+        })
+        let fullText = ''
+        for await (const chunk of stream) {
+          if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
+            fullText += chunk.delta.text
+            onUpdate?.({ loading: true, summary: fullText.slice(0, 80) + '…' })
+          }
+        }
+        const result = parseJSON(fullText)
+        if (result) { onUpdate?.(result); return result }
+      } catch {
+        // Claude тоже недоступен → rule-based анализ ниже
+      }
     }
-    onUpdate?.(result)
-    return result
+
+    // ── Оба AI недоступны → детерминированный анализ по данным ──────────────
+    const sectors = Object.values(state.sectors)
+    const allAlerts = sectors.flatMap(s => s.alerts)
+    const critCount = allAlerts.filter(a => a.severity === 'critical').length
+    const warnCount = allAlerts.filter(a => a.severity === 'warning').length
+    const critSector = sectors.find(s => s.kpis.some(k => k.severity === 'critical'))
+    const warnSectors = sectors.filter(s => s.kpis.some(k => k.severity === 'warning')).map(s => s.label)
+
+    const ruleAnalysis: AIAnalysis = {
+      ...fallback,
+      summary: `Индекс здоровья города: ${state.overallScore}/100. Инцидентов: ${allAlerts.length} (критических: ${critCount}).`,
+      whatHappening: critCount > 0
+        ? `Зафиксировано ${critCount} критических и ${warnCount} предупреждающих инцидентов. Проблемные секторы: ${critSector?.label ?? ''} ${warnSectors.join(', ')}.`
+        : warnCount > 0
+          ? `Город в режиме повышенного внимания. ${warnCount} предупреждений в секторах: ${warnSectors.join(', ')}.`
+          : `Все системы работают в штатном режиме. Индекс здоровья: ${state.overallScore}/100.`,
+      howCritical: state.overallScore < 50
+        ? `Критическая ситуация. Немедленное вмешательство требуется в ${critCount} секторах.`
+        : state.overallScore < 70
+          ? `Повышенная нагрузка на городские системы. Требуется мониторинг.`
+          : `Ситуация контролируемая. Продолжать плановый мониторинг.`,
+      whatToDo: critCount > 0
+        ? `1. Активировать оперативный штаб по инцидентам в секторе "${critSector?.label}".\n2. Усилить патрулирование и мониторинг.\n3. Информировать население через официальные каналы.\n4. Подготовить резервные мощности.`
+        : `1. Поддерживать текущий режим мониторинга.\n2. Контролировать KPI секторов каждые 30 минут.\n3. Провести плановые технические проверки.\n4. Обновить прогноз на следующие 4 часа.`,
+      predictions: [
+        state.overallScore < 60
+          ? `Риск ухудшения обстановки в ближайшие 2 часа при сохранении текущих тенденций`
+          : `Ситуация стабилизируется в течение 1-2 часов при отсутствии новых инцидентов`,
+        `Мониторинг ${sectors.length} секторов: обновление данных каждые 2 минуты`,
+        `Активных источников данных: USGS, WAQI, HERE Traffic, Open-Meteo, RSS`,
+      ],
+    }
+    onUpdate?.(ruleAnalysis)
+    return ruleAnalysis
   }
 }

@@ -7,7 +7,7 @@ const ROLES = [
 ]
 
 interface Props {
-  onSelect: (role: { id: string; focus: string; label: string }) => void
+  onSelect: (role: { id: string; focus: string; label: string; icon: string }) => void
 }
 
 export function RoleSelector({ onSelect }: Props) {
@@ -34,7 +34,7 @@ export function RoleSelector({ onSelect }: Props) {
           {ROLES.map(role => (
             <button
               key={role.id}
-              onClick={() => onSelect(role)}
+              onClick={() => onSelect({ id: role.id, focus: role.focus, label: role.label, icon: role.icon })}
               className="flex items-center gap-4 p-4 rounded-2xl border border-[#1a3050] bg-[#0a1628] hover:border-cyan-400/50 hover:bg-cyan-400/5 transition-all duration-200 text-left group"
             >
               <span className="text-3xl">{role.icon}</span>

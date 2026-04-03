@@ -70,7 +70,18 @@ export function AlertPanel({ alerts, newAlertIds }: Props) {
               </p>
             </div>
 
-            <span className="text-[10px] text-slate-600 uppercase tracking-wider">{sectorLabel[alert.sector]}</span>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-slate-600 uppercase tracking-wider">{sectorLabel[alert.sector]}</span>
+              {alert.source ? (
+                <span className="text-[10px] text-green-500/70 border border-green-500/30 rounded px-1.5 py-0.5">
+                  📡 {alert.source}
+                </span>
+              ) : (
+                <span className="text-[10px] text-slate-600/60 border border-slate-700/40 rounded px-1.5 py-0.5">
+                  🔮 Симулировано
+                </span>
+              )}
+            </div>
           </div>
         )
       })}
