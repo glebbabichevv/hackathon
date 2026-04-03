@@ -38,13 +38,16 @@ export interface RealCityData {
 
 function weatherCodeToInfo(code: number): { icon: string; condition: string } {
   if (code === 0) return { icon: '☀️', condition: 'Ясно' }
-  if (code <= 3) return { icon: '🌤️', condition: 'Переменная облачность' }
-  if (code <= 48) return { icon: '🌫️', condition: 'Туман' }
-  if (code <= 57) return { icon: '🌦️', condition: 'Морось' }
-  if (code <= 67) return { icon: '🌧️', condition: 'Дождь' }
-  if (code <= 77) return { icon: '❄️', condition: 'Снег' }
-  if (code <= 82) return { icon: '🌦️', condition: 'Ливень' }
-  if (code <= 99) return { icon: '⛈️', condition: 'Гроза' }
+  if (code === 1) return { icon: '🌤️', condition: 'Преимущественно ясно' }
+  if (code === 2) return { icon: '⛅', condition: 'Переменная облачность' }
+  if (code === 3) return { icon: '☁️', condition: 'Пасмурно' }
+  if (code === 45 || code === 48) return { icon: '🌫️', condition: 'Туман' }
+  if (code >= 51 && code <= 57) return { icon: '🌦️', condition: 'Морось' }
+  if (code >= 61 && code <= 67) return { icon: '🌧️', condition: 'Дождь' }
+  if (code >= 71 && code <= 77) return { icon: '❄️', condition: 'Снег' }
+  if (code >= 80 && code <= 82) return { icon: '🌧️', condition: 'Ливень' }
+  if (code === 85 || code === 86) return { icon: '🌨️', condition: 'Снегопад' }
+  if (code >= 95 && code <= 99) return { icon: '⛈️', condition: 'Гроза' }
   return { icon: '🌡️', condition: 'Неизвестно' }
 }
 

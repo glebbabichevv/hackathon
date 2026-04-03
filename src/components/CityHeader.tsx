@@ -99,10 +99,15 @@ export function CityHeader({ state, onRefresh, lastUpdate, weather, dataFetchedA
           {weather && (
             <div className="hidden md:flex items-center gap-2 border border-[#1a3050] rounded-lg px-3 py-1.5">
               <span className="text-lg">{weather.icon}</span>
-              <div className="text-[11px]">
-                <span className="text-white font-bold">{weather.temperature > 0 ? '+' : ''}{weather.temperature}°C</span>
-                <span className="text-slate-500 ml-1.5">{weather.condition}</span>
-                <span className="text-slate-600 ml-1.5">💨 {weather.windSpeed} км/ч</span>
+              <div className="text-[11px] flex flex-col gap-0.5">
+                <div>
+                  <span className="text-white font-bold">{weather.temperature > 0 ? '+' : ''}{weather.temperature}°C</span>
+                  <span className="text-slate-500 ml-1.5">{weather.condition}</span>
+                </div>
+                <div className="text-slate-500">
+                  <span>💧 {weather.humidity}%</span>
+                  <span className="ml-1.5">💨 {weather.windSpeed} км/ч</span>
+                </div>
               </div>
               {dataFetchedAt && (
                 <span className="flex items-center gap-1 text-[10px] text-green-400 border-l border-[#1a3050] pl-2">
