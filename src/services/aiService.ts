@@ -49,7 +49,7 @@ ${alertLines}
 export async function analyzeCity(
   state: CityState,
   onUpdate?: (partial: Partial<AIAnalysis>) => void,
-  _provider = 'ollama',
+  provider = 'ollama',
   ollamaModel = OLLAMA_MODEL
 ): Promise<AIAnalysis> {
   onUpdate?.({ loading: true })
@@ -83,11 +83,11 @@ export async function analyzeCity(
 
   try {
     // ── Claude (облачный) ──────────────────────────────────────────────────────
-    if (_provider === 'claude' && import.meta.env.VITE_ANTHROPIC_API_KEY) {
+    if (provider === 'claude' && import.meta.env.VITE_ANTHROPIC_API_KEY) {
       const stream = await anthropic.messages.stream({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 1024,
-        system: buildCitySystemPrompt(state),
+        system: 'Ты — AI-аналитик умного города. Отвечай ТОЛЬКО валидным JSON без markdown, без ```.',
         messages: [{ role: 'user', content: buildAnalysisPrompt(state) }],
       })
       let fullText = ''

@@ -217,12 +217,12 @@ export function applyRealData(state: CityState, data: RealCityData): CityState {
   const util = s.sectors.utilities
   const temp = weather.temperature
   let elecAdjust = 0
-  if (temp < -10) elecAdjust = 18
-  else if (temp < 0) elecAdjust = 12
-  else if (temp < 8) elecAdjust = 6
-  else if (temp > 35) elecAdjust = 14
-  else if (temp > 28) elecAdjust = 8
-  else if (temp >= 15 && temp <= 22) elecAdjust = -6  // комфортная температура
+  if (temp < -15) elecAdjust = 15       // сильный мороз — отопление
+  else if (temp < -5) elecAdjust = 8
+  else if (temp < 5) elecAdjust = 4
+  else if (temp >= 5 && temp <= 30) elecAdjust = -4   // комфортный диапазон — норма
+  else if (temp > 38) elecAdjust = 10   // экстремальная жара — кондиционеры
+  else if (temp > 32) elecAdjust = 5
 
   const elecBase = util.kpis.find(k => k.id === 'electricity')?.value ?? 80
   updateKpi(util.kpis, 'electricity',
@@ -235,8 +235,8 @@ export function applyRealData(state: CityState, data: RealCityData): CityState {
   const allKpis = Object.values(s.sectors).flatMap(sec => sec.kpis)
   const critCount = allKpis.filter(k => k.severity === 'critical').length
   const warnCount = allKpis.filter(k => k.severity === 'warning').length
-  s.overallScore = Math.max(10, Math.min(100, 100 - critCount * 12 - warnCount * 4))
-  s.overallSeverity = critCount > 0 ? 'critical' : warnCount > 2 ? 'warning' : 'normal'
+  s.overallScore = Math.max(10, Math.min(100, 100 - critCount * 8 - warnCount * 3))
+  s.overallSeverity = critCount >= 2 ? 'critical' : critCount === 1 || warnCount > 3 ? 'warning' : 'normal'
   s.timestamp = new Date().toLocaleString('ru-RU')
 
   return s

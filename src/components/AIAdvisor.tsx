@@ -4,6 +4,7 @@ import type { AIAnalysis } from '../types/city'
 interface Props {
   analysis: AIAnalysis
   onRefresh: () => void
+  provider?: 'claude' | 'ollama'
 }
 
 function speakText(text: string) {
@@ -18,7 +19,7 @@ function speakText(text: string) {
   window.speechSynthesis.speak(utt)
 }
 
-export function AIAdvisor({ analysis, onRefresh }: Props) {
+export function AIAdvisor({ analysis, onRefresh, provider = 'ollama' }: Props) {
   const [speaking, setSpeaking] = useState(false)
 
   const handleSpeak = () => {
@@ -44,7 +45,10 @@ export function AIAdvisor({ analysis, onRefresh }: Props) {
           </div>
           <div>
             <h2 className="text-base font-bold text-white">AI-Аналитик</h2>
-            <p className="text-[11px] text-slate-500">Ollama · Локальный AI · Анализ в реальном времени</p>
+            <p className="text-[11px] text-slate-500">
+              {provider === 'claude' ? '☁️ Claude · Anthropic API' : '🦙 Ollama · Локальный AI'}
+              {' · '}Анализ в реальном времени
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">

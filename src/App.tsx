@@ -410,7 +410,7 @@ export default function App() {
               onProviderChange={setAiProvider}
               onModelChange={setOllamaModel}
             />
-            <AIAdvisor analysis={analysis} onRefresh={handleAnalyze} />
+            <AIAdvisor analysis={analysis} onRefresh={handleAnalyze} provider={aiProvider} />
             {correlations.length > 0 && <CorrelationPanel correlations={correlations} />}
             {predictions.length > 0 && <PredictionPanel predictions={predictions} />}
             <OverviewRadar state={state} />
