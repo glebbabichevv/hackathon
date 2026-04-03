@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { CityState, AIAnalysis } from '../types/city'
+import { streamOllamaChat } from './ollamaService'
 
 const client = new Anthropic({
   apiKey: import.meta.env.VITE_ANTHROPIC_API_KEY || '',
@@ -43,7 +44,9 @@ ${alertLines}
 
 export async function analyzeCity(
   state: CityState,
-  onUpdate?: (partial: Partial<AIAnalysis>) => void
+  onUpdate?: (partial: Partial<AIAnalysis>) => void,
+  provider: 'claude' | 'ollama' = 'claude',
+  ollamaModel = 'llama3.2'
 ): Promise<AIAnalysis> {
   const result: AIAnalysis = {
     summary: '',
@@ -59,19 +62,30 @@ export async function analyzeCity(
   try {
     let fullText = ''
 
-    const stream = await client.messages.stream({
-      model: 'claude-opus-4-6',
-      max_tokens: 800,
-      messages: [{ role: 'user', content: buildCityPrompt(state) }],
-    })
+    if (provider === 'ollama') {
+      // Ollama — локальный AI
+      await streamOllamaChat(
+        'Ты — AI-аналитик умного города. Отвечай строго в JSON формате без markdown.',
+        [{ role: 'user', content: buildCityPrompt(state) }],
+        ollamaModel,
+        (partial) => {
+          fullText = partial
+          onUpdate?.({ loading: true, summary: partial.slice(0, 80) + '…' })
+        }
+      )
+    } else {
+      // Claude — облачный AI
+      const stream = await client.messages.stream({
+        model: 'claude-opus-4-6',
+        max_tokens: 800,
+        messages: [{ role: 'user', content: buildCityPrompt(state) }],
+      })
 
-    for await (const chunk of stream) {
-      if (
-        chunk.type === 'content_block_delta' &&
-        chunk.delta.type === 'text_delta'
-      ) {
-        fullText += chunk.delta.text
-        onUpdate?.({ loading: true, summary: fullText.slice(0, 80) + '…' })
+      for await (const chunk of stream) {
+        if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
+          fullText += chunk.delta.text
+          onUpdate?.({ loading: true, summary: fullText.slice(0, 80) + '…' })
+        }
       }
     }
 

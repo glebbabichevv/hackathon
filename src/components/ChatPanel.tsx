@@ -4,6 +4,8 @@ import { sendMessage, QUICK_PROMPTS, type ChatMessage } from '../services/chatSe
 
 interface Props {
   state: CityState
+  provider?: 'claude' | 'ollama'
+  ollamaModel?: string
 }
 
 function renderMarkdown(text: string): string {
@@ -18,7 +20,7 @@ function renderMarkdown(text: string): string {
     .replace(/\n/g, '<br/>')
 }
 
-export function ChatPanel({ state }: Props) {
+export function ChatPanel({ state, provider = 'claude', ollamaModel = 'llama3.2' }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome',
@@ -66,7 +68,7 @@ export function ChatPanel({ state }: Props) {
         setMessages(prev =>
           prev.map(m => m.id === assistantId ? { ...m, content: partial } : m)
         )
-      })
+      }, provider, ollamaModel)
     } catch {
       setMessages(prev =>
         prev.map(m => m.id === assistantId
@@ -100,7 +102,12 @@ export function ChatPanel({ state }: Props) {
         </div>
         <div>
           <h2 className="text-sm font-bold text-white">AI-Советник города</h2>
-          <p className="text-[11px] text-slate-500">Claude Haiku · Контекст: {Object.values(state.sectors).flatMap(s => s.alerts).length} инцидентов</p>
+          <p className="text-[11px] text-slate-500">
+            {provider === 'ollama'
+              ? <span className="text-purple-400">🦙 {ollamaModel} (локально)</span>
+              : 'Claude Haiku (облако)'
+            } · {Object.values(state.sectors).flatMap(s => s.alerts).length} инцидентов
+          </p>
         </div>
         <div className="ml-auto flex items-center gap-1.5 text-[11px]">
           <span className={`w-1.5 h-1.5 rounded-full ${isStreaming ? 'bg-cyan-400 animate-pulse' : 'bg-green-400'}`} />

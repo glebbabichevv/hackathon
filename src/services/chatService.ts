@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { CityState } from '../types/city'
+import { streamOllamaChat, buildCitySystemPrompt } from './ollamaService'
 
 const client = new Anthropic({
   apiKey: import.meta.env.VITE_ANTHROPIC_API_KEY || '',
@@ -52,13 +53,21 @@ export async function sendMessage(
   history: ChatMessage[],
   userMessage: string,
   state: CityState,
-  onChunk: (text: string) => void
+  onChunk: (text: string) => void,
+  provider: 'claude' | 'ollama' = 'claude',
+  ollamaModel = 'llama3.2'
 ): Promise<string> {
   const messages = [
     ...history.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
     { role: 'user' as const, content: userMessage },
   ]
 
+  // --- Ollama (локальный AI, без интернета) ---
+  if (provider === 'ollama') {
+    return streamOllamaChat(buildCitySystemPrompt(state), messages, ollamaModel, onChunk)
+  }
+
+  // --- Claude (облачный AI) ---
   const stream = await client.messages.stream({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 800,

@@ -42,9 +42,17 @@ export function KPICard({ kpi, accentColor }: Props) {
       className={`relative rounded-xl border ${cfg.border} ${cfg.bg} p-4 flex flex-col gap-2 transition-all duration-300 hover:brightness-110`}
     >
       {/* severity badge */}
-      <span className={`absolute top-3 right-3 text-[10px] font-bold px-2 py-0.5 rounded ${cfg.badge}`}>
-        {cfg.label}
-      </span>
+      <div className="absolute top-3 right-3 flex flex-col items-end gap-1">
+        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${cfg.badge}`}>
+          {cfg.label}
+        </span>
+        {kpi.isLive && (
+          <span className="flex items-center gap-0.5 text-[9px] font-bold text-green-400 bg-green-400/10 border border-green-400/30 px-1.5 py-0.5 rounded">
+            <span className="w-1 h-1 bg-green-400 rounded-full animate-pulse" />
+            LIVE
+          </span>
+        )}
+      </div>
 
       {/* label */}
       <p className="text-xs text-slate-400 leading-tight pr-16">{kpi.label}</p>

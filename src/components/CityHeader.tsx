@@ -1,9 +1,12 @@
 import type { CityState } from '../types/city'
+import type { WeatherData } from '../services/realDataService'
 
 interface Props {
   state: CityState
   onRefresh: () => void
   lastUpdate: string
+  weather?: WeatherData | null
+  dataFetchedAt?: string
 }
 
 const scoreColor = (score: number) => {
@@ -20,7 +23,7 @@ const scoreLabel = (score: number) => {
   return 'КРИЗИС'
 }
 
-export function CityHeader({ state, onRefresh, lastUpdate }: Props) {
+export function CityHeader({ state, onRefresh, lastUpdate, weather, dataFetchedAt }: Props) {
   const color = scoreColor(state.overallScore)
   const label = scoreLabel(state.overallScore)
 
@@ -92,10 +95,28 @@ export function CityHeader({ state, onRefresh, lastUpdate }: Props) {
             )}
           </div>
 
+          {/* Weather widget */}
+          {weather && (
+            <div className="hidden md:flex items-center gap-2 border border-[#1a3050] rounded-lg px-3 py-1.5">
+              <span className="text-lg">{weather.icon}</span>
+              <div className="text-[11px]">
+                <span className="text-white font-bold">{weather.temperature > 0 ? '+' : ''}{weather.temperature}°C</span>
+                <span className="text-slate-500 ml-1.5">{weather.condition}</span>
+                <span className="text-slate-600 ml-1.5">💨 {weather.windSpeed} км/ч</span>
+              </div>
+              {dataFetchedAt && (
+                <span className="flex items-center gap-1 text-[10px] text-green-400 border-l border-[#1a3050] pl-2">
+                  <span className="w-1 h-1 bg-green-400 rounded-full animate-pulse" />
+                  LIVE {dataFetchedAt}
+                </span>
+              )}
+            </div>
+          )}
+
           {/* Live indicator */}
           <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
             <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
-            <span className="hidden sm:inline">Обновлено {lastUpdate}</span>
+            <span className="hidden sm:inline">KPI {lastUpdate}</span>
           </div>
 
           {/* Refresh button */}

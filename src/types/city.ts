@@ -9,6 +9,8 @@ export interface KPI {
   threshold: { warning: number; critical: number }
   severity: Severity
   description: string
+  isLive?: boolean    // данные из реального API
+  source?: string     // название источника данных
 }
 
 export interface TimePoint {
@@ -28,6 +30,7 @@ export interface Alert {
   lat?: number
   lng?: number
   isGenerated?: boolean
+  source?: string
 }
 
 export type SectorKey = 'transport' | 'ecology' | 'safety' | 'utilities'

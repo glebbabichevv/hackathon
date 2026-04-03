@@ -3,6 +3,7 @@ import { cityData, refreshData } from './data/mockData'
 import type { CityState, AIAnalysis, SectorKey } from './types/city'
 import { analyzeCity } from './services/aiService'
 import { generateIncident, generateCrisis } from './services/incidentGenerator'
+import { fetchRealData, applyRealData, type RealCityData } from './services/realDataService'
 import { CityHeader } from './components/CityHeader'
 import { SectorPanel } from './components/SectorPanel'
 import { AlertPanel } from './components/AlertPanel'
@@ -11,6 +12,18 @@ import { OverviewRadar } from './components/OverviewRadar'
 import { CityMap } from './components/CityMap'
 import { ChatPanel } from './components/ChatPanel'
 import { ToastContainer, type Toast } from './components/ToastContainer'
+import { DataSourcesBadge } from './components/DataSourcesBadge'
+import { LiveDataBar } from './components/LiveDataBar'
+import { EcologyRealPanel } from './components/EcologyRealPanel'
+import { AIProviderSelector, type AIProvider } from './components/AIProviderSelector'
+import { CorrelationPanel } from './components/CorrelationPanel'
+import { PredictionPanel } from './components/PredictionPanel'
+import { RoleSelector } from './components/RoleSelector'
+import { ExportButton } from './components/ExportButton'
+import { fetchEarthquakes, earthquakeToAlert } from './services/earthquakeService'
+import { fetchAlmatyAirStations, waqiStationToAlert } from './services/waqiService'
+import { runCorrelationEngine, type CorrelationAlert } from './services/correlationEngine'
+import { predictKpi, type PredictionSeries } from './services/predictionEngine'
 
 const TABS = [
   { id: 'all', label: 'Все секторы' },
@@ -30,6 +43,12 @@ export default function App() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [isCrisis, setIsCrisis] = useState(false)
   const [toasts, setToasts] = useState<Toast[]>([])
+  const [realData, setRealData] = useState<RealCityData | null>(null)
+  const [aiProvider, setAiProvider] = useState<AIProvider>('claude')
+  const [ollamaModel, setOllamaModel] = useState('llama3.2')
+  const [correlations, setCorrelations] = useState<CorrelationAlert[]>([])
+  const [predictions, setPredictions] = useState<PredictionSeries[]>([])
+  const [roleSelected, setRoleSelected] = useState(() => !!sessionStorage.getItem('sc_role'))
   const [analysis, setAnalysis] = useState<AIAnalysis>({
     summary: '',
     whatHappening: '',
@@ -55,8 +74,8 @@ export default function App() {
   const handleAnalyze = useCallback(() => {
     analyzeCity(state, partial => {
       setAnalysis(prev => ({ ...prev, ...partial }))
-    })
-  }, [state])
+    }, aiProvider, ollamaModel)
+  }, [state, aiProvider, ollamaModel])
 
   const addIncidentToState = useCallback((
     incident: NonNullable<Awaited<ReturnType<typeof generateIncident>>>
@@ -123,6 +142,73 @@ export default function App() {
     return () => clearInterval(id)
   }, [handleRefreshData])
 
+  // Fetch real data and apply to state
+  const fetchAndApplyRealData = useCallback(async () => {
+    const data = await fetchRealData()
+    if (data) {
+      setRealData(data)
+      setState(prev => applyRealData(prev, data))
+      setLastUpdate(new Date().toLocaleTimeString('ru-RU'))
+    }
+  }, [])
+
+  // Real data: fetch on mount and every 5 minutes
+  useEffect(() => {
+    fetchAndApplyRealData()
+    const id = setInterval(fetchAndApplyRealData, 5 * 60 * 1000)
+    return () => clearInterval(id)
+  }, [fetchAndApplyRealData])
+
+  // USGS earthquakes + WAQI stations every 10 min
+  useEffect(() => {
+    const load = async () => {
+      const [quakes, stations] = await Promise.allSettled([
+        fetchEarthquakes(),
+        fetchAlmatyAirStations(),
+      ])
+      const newAlerts = [
+        ...(quakes.status === 'fulfilled' ? quakes.value.slice(0, 5).map(earthquakeToAlert) : []),
+        ...(stations.status === 'fulfilled' ? stations.value.map(waqiStationToAlert).filter(Boolean) as any[] : []),
+      ]
+      if (newAlerts.length === 0) return
+      setState(prev => {
+        const updated = { ...prev, sectors: { ...prev.sectors } }
+        for (const alert of newAlerts) {
+          const sec = updated.sectors[alert.sector as SectorKey]
+          if (!sec) continue
+          // Заменяем старые записи того же источника, добавляем новые
+          const filtered = sec.alerts.filter(a => a.id !== alert.id)
+          updated.sectors[alert.sector as SectorKey] = {
+            ...sec,
+            alerts: [alert, ...filtered].slice(0, 12),
+          }
+        }
+        return updated
+      })
+    }
+    load()
+    const id = setInterval(load, 10 * 60 * 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  // Correlations + predictions whenever state or weather updates
+  useEffect(() => {
+    if (!realData) return
+    setCorrelations(runCorrelationEngine(state, realData.weather))
+
+    // Прогнозы для критичных KPI
+    const preds: PredictionSeries[] = []
+    for (const sector of Object.values(state.sectors)) {
+      for (const kpi of sector.kpis) {
+        const hist = sector.history[kpi.id]
+        if (!hist || kpi.severity === 'good') continue
+        const series = predictKpi(hist, kpi.id, kpi.label, kpi.unit, kpi.threshold)
+        if (series?.willExceedThreshold) preds.push(series)
+      }
+    }
+    setPredictions(preds.slice(0, 6))
+  }, [state, realData])
+
   // Auto-analyze on mount
   useEffect(() => {
     handleAnalyze()
@@ -156,7 +242,23 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#060d1f] grid-bg text-slate-200">
-      <CityHeader state={state} onRefresh={handleRefreshData} lastUpdate={lastUpdate} />
+      {!roleSelected && (
+        <RoleSelector onSelect={role => {
+          sessionStorage.setItem('sc_role', role.id)
+          setRoleSelected(true)
+          if (role.focus !== 'all') setActiveTab(role.focus)
+        }} />
+      )}
+      <CityHeader
+        state={state}
+        onRefresh={handleRefreshData}
+        lastUpdate={lastUpdate}
+        weather={realData?.weather}
+        dataFetchedAt={realData?.fetchedAt}
+      />
+
+      {/* Live data ticker — реальные данные Open-Meteo */}
+      {realData && <LiveDataBar data={realData} />}
 
       <div className="max-w-[1600px] mx-auto px-4 md:px-6 py-6 flex flex-col gap-6">
 
@@ -206,20 +308,38 @@ export default function App() {
               <CityMap alerts={allAlerts} newAlertIds={newAlertIds} />
             )}
             {activeTab === 'chat' && (
-              <ChatPanel state={state} />
+              <ChatPanel state={state} provider={aiProvider} ollamaModel={ollamaModel} />
             )}
             {activeTab !== 'map' && activeTab !== 'chat' && (
-              <div className={`grid gap-6 ${activeTab === 'all' ? 'md:grid-cols-2' : 'grid-cols-1'}`}>
-                {visibleSectors.map(sector => (
-                  <SectorPanel key={sector.key} sector={sector} />
-                ))}
-              </div>
+              <>
+                {/* Реальная панель экологии */}
+                {realData && (activeTab === 'ecology' || activeTab === 'all') && (
+                  <EcologyRealPanel
+                    airQuality={realData.airQuality}
+                    weather={realData.weather}
+                  />
+                )}
+                <div className={`grid gap-6 ${activeTab === 'all' ? 'md:grid-cols-2' : 'grid-cols-1'}`}>
+                  {visibleSectors.map(sector => (
+                    <SectorPanel key={sector.key} sector={sector} />
+                  ))}
+                </div>
+              </>
             )}
           </div>
 
           {/* Right sidebar */}
           <div className="flex flex-col gap-6">
+            <ExportButton state={state} analysis={analysis} />
+            <AIProviderSelector
+              provider={aiProvider}
+              ollamaModel={ollamaModel}
+              onProviderChange={setAiProvider}
+              onModelChange={setOllamaModel}
+            />
             <AIAdvisor analysis={analysis} onRefresh={handleAnalyze} />
+            {correlations.length > 0 && <CorrelationPanel correlations={correlations} />}
+            {predictions.length > 0 && <PredictionPanel predictions={predictions} />}
             <OverviewRadar state={state} />
 
             <div className="rounded-2xl border border-[#1a3050] bg-[#0a1628] p-5">

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { AIAnalysis } from '../types/city'
 
 interface Props {
@@ -5,7 +6,31 @@ interface Props {
   onRefresh: () => void
 }
 
+function speakText(text: string) {
+  window.speechSynthesis.cancel()
+  const utt = new SpeechSynthesisUtterance(text)
+  utt.lang = 'ru-RU'
+  utt.rate = 0.92
+  utt.pitch = 1
+  const voices = window.speechSynthesis.getVoices()
+  const ruVoice = voices.find(v => v.lang.startsWith('ru'))
+  if (ruVoice) utt.voice = ruVoice
+  window.speechSynthesis.speak(utt)
+}
+
 export function AIAdvisor({ analysis, onRefresh }: Props) {
+  const [speaking, setSpeaking] = useState(false)
+
+  const handleSpeak = () => {
+    if (speaking) { window.speechSynthesis.cancel(); setSpeaking(false); return }
+    const text = [analysis.whatHappening, analysis.howCritical, analysis.whatToDo]
+      .filter(Boolean).join('. ')
+    if (!text) return
+    setSpeaking(true)
+    speakText(text)
+    window.speechSynthesis.addEventListener('end', () => setSpeaking(false), { once: true })
+  }
+
   return (
     <div className="rounded-2xl border border-[#1a3050] bg-[#0a1628] overflow-hidden">
       {/* Header */}
@@ -22,14 +47,28 @@ export function AIAdvisor({ analysis, onRefresh }: Props) {
             <p className="text-[11px] text-slate-500">Claude Opus · Анализ в реальном времени</p>
           </div>
         </div>
-        <button
-          onClick={onRefresh}
-          disabled={analysis.loading}
-          className="flex items-center gap-2 text-xs text-cyan-400 border border-cyan-400/30 hover:border-cyan-400/60 hover:bg-cyan-400/10 disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1.5 rounded-lg transition-all duration-200"
-        >
-          <span className={analysis.loading ? 'animate-spin inline-block' : ''}>⟳</span>
-          {analysis.loading ? 'Анализирую...' : 'Обновить'}
-        </button>
+        <div className="flex items-center gap-2">
+          {analysis.whatHappening && (
+            <button
+              onClick={handleSpeak}
+              className={`text-xs border px-3 py-1.5 rounded-lg transition-all duration-200 ${
+                speaking
+                  ? 'border-orange-400/60 bg-orange-400/10 text-orange-400'
+                  : 'border-slate-600 text-slate-400 hover:border-slate-500'
+              }`}
+            >
+              {speaking ? '⏹ Стоп' : '🔊'}
+            </button>
+          )}
+          <button
+            onClick={onRefresh}
+            disabled={analysis.loading}
+            className="flex items-center gap-2 text-xs text-cyan-400 border border-cyan-400/30 hover:border-cyan-400/60 hover:bg-cyan-400/10 disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1.5 rounded-lg transition-all duration-200"
+          >
+            <span className={analysis.loading ? 'animate-spin inline-block' : ''}>⟳</span>
+            {analysis.loading ? 'Анализирую...' : 'Обновить'}
+          </button>
+        </div>
       </div>
 
       {analysis.loading && !analysis.whatHappening ? (
