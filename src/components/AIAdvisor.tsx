@@ -44,7 +44,7 @@ export function AIAdvisor({ analysis, onRefresh }: Props) {
           </div>
           <div>
             <h2 className="text-base font-bold text-white">AI-Аналитик</h2>
-            <p className="text-[11px] text-slate-500">Claude Opus · Анализ в реальном времени</p>
+            <p className="text-[11px] text-slate-500">Ollama · Локальный AI · Анализ в реальном времени</p>
           </div>
         </div>
         <div className="flex items-center gap-2">

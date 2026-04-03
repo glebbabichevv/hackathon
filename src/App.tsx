@@ -15,7 +15,7 @@ import { ToastContainer, type Toast } from './components/ToastContainer'
 import { DataSourcesBadge } from './components/DataSourcesBadge'
 import { LiveDataBar } from './components/LiveDataBar'
 import { EcologyRealPanel } from './components/EcologyRealPanel'
-import { AIProviderSelector, type AIProvider } from './components/AIProviderSelector'
+import { AIProviderSelector } from './components/AIProviderSelector'
 import { CorrelationPanel } from './components/CorrelationPanel'
 import { PredictionPanel } from './components/PredictionPanel'
 import { RoleSelector } from './components/RoleSelector'
@@ -44,7 +44,6 @@ export default function App() {
   const [isCrisis, setIsCrisis] = useState(false)
   const [toasts, setToasts] = useState<Toast[]>([])
   const [realData, setRealData] = useState<RealCityData | null>(null)
-  const [aiProvider, setAiProvider] = useState<AIProvider>('claude')
   const [ollamaModel, setOllamaModel] = useState('llama3.2')
   const [correlations, setCorrelations] = useState<CorrelationAlert[]>([])
   const [predictions, setPredictions] = useState<PredictionSeries[]>([])
@@ -74,7 +73,7 @@ export default function App() {
   const handleAnalyze = useCallback(() => {
     analyzeCity(state, partial => {
       setAnalysis(prev => ({ ...prev, ...partial }))
-    }, aiProvider, ollamaModel)
+    }, 'ollama', ollamaModel)
   }, [state, aiProvider, ollamaModel])
 
   const addIncidentToState = useCallback((
@@ -308,7 +307,7 @@ export default function App() {
               <CityMap alerts={allAlerts} newAlertIds={newAlertIds} />
             )}
             {activeTab === 'chat' && (
-              <ChatPanel state={state} provider={aiProvider} ollamaModel={ollamaModel} />
+              <ChatPanel state={state} provider="ollama" ollamaModel={ollamaModel} />
             )}
             {activeTab !== 'map' && activeTab !== 'chat' && (
               <>
@@ -332,9 +331,7 @@ export default function App() {
           <div className="flex flex-col gap-6">
             <ExportButton state={state} analysis={analysis} />
             <AIProviderSelector
-              provider={aiProvider}
               ollamaModel={ollamaModel}
-              onProviderChange={setAiProvider}
               onModelChange={setOllamaModel}
             />
             <AIAdvisor analysis={analysis} onRefresh={handleAnalyze} />

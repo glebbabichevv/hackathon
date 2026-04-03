@@ -1,10 +1,7 @@
-import Anthropic from '@anthropic-ai/sdk'
 import type { CityState, Alert, SectorKey, Severity } from '../types/city'
+import { streamOllamaChat } from './ollamaService'
 
-const client = new Anthropic({
-  apiKey: import.meta.env.VITE_ANTHROPIC_API_KEY || '',
-  dangerouslyAllowBrowser: true,
-})
+const OLLAMA_MODEL = import.meta.env.VITE_OLLAMA_MODEL || 'llama3.2'
 
 const ALMATY_LOCATIONS: Record<SectorKey, string[]> = {
   transport: [
@@ -63,7 +60,7 @@ export async function generateIncident(state: CityState): Promise<Alert | null> 
 
 Сгенерируй ОДИН новый реалистичный городской инцидент. Будь конкретен и оригинален.
 
-Верни ТОЛЬКО валидный JSON:
+Верни ТОЛЬКО валидный JSON (без markdown, без \`\`\`):
 {
   "sector": "transport",
   "title": "Краткое название (до 60 символов)",
@@ -76,14 +73,15 @@ export async function generateIncident(state: CityState): Promise<Alert | null> 
 Допустимые значения severity: critical, warning, normal`
 
   try {
-    const response = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 350,
-      messages: [{ role: 'user', content: prompt }],
-    })
+    let fullText = ''
+    await streamOllamaChat(
+      'Ты — система генерации городских инцидентов. Отвечай строго в JSON формате без markdown.',
+      [{ role: 'user', content: prompt }],
+      OLLAMA_MODEL,
+      partial => { fullText = partial }
+    )
 
-    const text = response.content[0].type === 'text' ? response.content[0].text : ''
-    const jsonMatch = text.match(/\{[\s\S]*\}/)
+    const jsonMatch = fullText.match(/\{[\s\S]*\}/)
     if (!jsonMatch) return null
 
     const parsed = JSON.parse(jsonMatch[0])

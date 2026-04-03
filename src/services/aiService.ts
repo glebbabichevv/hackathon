@@ -1,20 +1,18 @@
-import Anthropic from '@anthropic-ai/sdk'
+import { streamOllamaChat, buildCitySystemPrompt } from './ollamaService'
 import type { CityState, AIAnalysis } from '../types/city'
-import { streamOllamaChat } from './ollamaService'
 
-const client = new Anthropic({
-  apiKey: import.meta.env.VITE_ANTHROPIC_API_KEY || '',
-  dangerouslyAllowBrowser: true,
-})
+const OLLAMA_MODEL = import.meta.env.VITE_OLLAMA_MODEL || 'llama3.2'
 
-function buildCityPrompt(state: CityState): string {
+function buildAnalysisPrompt(state: CityState): string {
   const sectors = Object.values(state.sectors)
   const allAlerts = sectors.flatMap(s => s.alerts)
   const criticalAlerts = allAlerts.filter(a => a.severity === 'critical')
   const warningAlerts = allAlerts.filter(a => a.severity === 'warning')
 
   const kpiSummary = sectors.map(s => {
-    const kpiLines = s.kpis.map(k => `  - ${k.label}: ${k.value} ${k.unit} (тренд: ${k.trend > 0 ? '+' : ''}${k.trend}%)`).join('\n')
+    const kpiLines = s.kpis.map(k =>
+      `  - ${k.label}: ${k.value} ${k.unit} (тренд: ${k.trend > 0 ? '+' : ''}${k.trend}%)`
+    ).join('\n')
     return `${s.label}:\n${kpiLines}`
   }).join('\n\n')
 
@@ -23,77 +21,60 @@ function buildCityPrompt(state: CityState): string {
   ).join('\n')
 
   return `Ты — AI-аналитик системы управления умным городом ${state.city}.
-Текущее время: ${state.timestamp}
-Общий индекс здоровья города: ${state.overallScore}/100
+Время: ${state.timestamp}. Индекс здоровья: ${state.overallScore}/100.
+Инцидентов: ${allAlerts.length} (критических: ${criticalAlerts.length}, предупреждений: ${warningAlerts.length})
 
 ТЕКУЩИЕ KPI:
 ${kpiSummary}
 
-АКТИВНЫЕ ИНЦИДЕНТЫ (${allAlerts.length} всего, ${criticalAlerts.length} критических, ${warningAlerts.length} предупреждений):
+АКТИВНЫЕ ИНЦИДЕНТЫ:
 ${alertLines}
 
-Сформируй краткий управленческий отчёт строго в следующем JSON-формате (только JSON, без markdown):
+Ответь ТОЛЬКО валидным JSON (без markdown, без \`\`\`):
 {
-  "whatHappening": "1-2 предложения: что сейчас происходит в городе",
-  "howCritical": "1-2 предложения: оценка критичности ситуации и наиболее острые проблемы",
-  "whatToDo": "3-4 конкретных действия для руководства прямо сейчас",
-  "predictions": ["прогноз 1 на ближайшие 2 часа", "прогноз 2", "прогноз 3"],
-  "summary": "2-3 предложения общего резюме для ЛПР"
+  "whatHappening": "1-2 предложения что происходит в городе",
+  "howCritical": "1-2 предложения оценка критичности и острые проблемы",
+  "whatToDo": "3-4 конкретных действия для руководства",
+  "predictions": ["прогноз 1 на 2 часа", "прогноз 2", "прогноз 3"],
+  "summary": "2-3 предложения общего резюме"
 }`
 }
 
 export async function analyzeCity(
   state: CityState,
   onUpdate?: (partial: Partial<AIAnalysis>) => void,
-  provider: 'claude' | 'ollama' = 'claude',
-  ollamaModel = 'llama3.2'
+  _provider = 'ollama',
+  ollamaModel = OLLAMA_MODEL
 ): Promise<AIAnalysis> {
-  const result: AIAnalysis = {
+  onUpdate?.({ loading: true })
+
+  const fallback: AIAnalysis = {
     summary: '',
     whatHappening: '',
     howCritical: '',
     whatToDo: '',
     predictions: [],
-    loading: true,
+    loading: false,
+    error: undefined,
   }
-
-  onUpdate?.({ loading: true })
 
   try {
     let fullText = ''
 
-    if (provider === 'ollama') {
-      // Ollama — локальный AI
-      await streamOllamaChat(
-        'Ты — AI-аналитик умного города. Отвечай строго в JSON формате без markdown.',
-        [{ role: 'user', content: buildCityPrompt(state) }],
-        ollamaModel,
-        (partial) => {
-          fullText = partial
-          onUpdate?.({ loading: true, summary: partial.slice(0, 80) + '…' })
-        }
-      )
-    } else {
-      // Claude — облачный AI
-      const stream = await client.messages.stream({
-        model: 'claude-opus-4-6',
-        max_tokens: 800,
-        messages: [{ role: 'user', content: buildCityPrompt(state) }],
-      })
-
-      for await (const chunk of stream) {
-        if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
-          fullText += chunk.delta.text
-          onUpdate?.({ loading: true, summary: fullText.slice(0, 80) + '…' })
-        }
+    await streamOllamaChat(
+      'Ты — AI-аналитик умного города. Отвечай строго в JSON формате без markdown.',
+      [{ role: 'user', content: buildAnalysisPrompt(state) }],
+      ollamaModel,
+      partial => {
+        fullText = partial
+        onUpdate?.({ loading: true, summary: partial.slice(0, 80) + '…' })
       }
-    }
+    )
 
-    // Parse JSON response
     const jsonMatch = fullText.match(/\{[\s\S]*\}/)
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0])
-      const final: AIAnalysis = {
+      const result: AIAnalysis = {
         summary: parsed.summary || '',
         whatHappening: parsed.whatHappening || '',
         howCritical: parsed.howCritical || '',
@@ -101,31 +82,24 @@ export async function analyzeCity(
         predictions: parsed.predictions || [],
         loading: false,
       }
-      onUpdate?.(final)
-      return final
+      onUpdate?.(result)
+      return result
     }
-
-    throw new Error('Не удалось разобрать ответ AI')
+    throw new Error('Не удалось разобрать JSON ответ')
   } catch (err) {
-    const error = err instanceof Error ? err.message : 'Ошибка AI-анализа'
-    const fallback: AIAnalysis = {
-      ...result,
-      loading: false,
-      error,
-      summary: 'Демо-режим (API ключ не указан)',
-      whatHappening:
-        'В городе зафиксированы отклонения в 4 секторах: пиковая нагрузка электросети (94%), критическое AQI в Северном районе (168), затор на Ленинском проспекте и рост ночных инцидентов в Восточном районе.',
-      howCritical:
-        'Ситуация оценивается как умеренно-критическая. 3 инцидента требуют немедленного вмешательства: энергосистема, водопровод и рост преступности. Риск каскадного отключения электросети — высокий.',
-      whatToDo:
-        '1. Включить резервные подстанции и ограничить промышленное потребление. 2. Направить аварийную бригаду ЖКХ на ул. Гагарина. 3. Усилить патрулирование Восточного района. 4. Ограничить выбросы предприятий Северного района до нормализации AQI.',
-      predictions: [
-        'Загруженность электросети превысит 95% к 20:00 при текущей динамике',
-        'AQI в Северном районе стабилизируется к полуночи при слабом ветре',
-        'Пробки на Ленинском рассосутся к 21:30 после ликвидации ДТП',
-      ],
+    const error = err instanceof Error ? err.message : 'Ошибка Ollama'
+    const isNotRunning = error.includes('fetch') || error.includes('Failed')
+
+    const result: AIAnalysis = {
+      ...fallback,
+      error: isNotRunning ? 'Ollama не запущена. Запустите: ollama serve' : error,
+      summary: 'Ollama не доступна',
+      whatHappening: `Запустите Ollama: ollama serve && ollama pull ${ollamaModel}`,
+      howCritical: 'AI-анализ недоступен без локальной модели.',
+      whatToDo: `1. Установите Ollama: ollama.com\n2. Скачайте модель: ollama pull ${ollamaModel}\n3. Запустите сервер: ollama serve`,
+      predictions: [],
     }
-    onUpdate?.(fallback)
-    return fallback
+    onUpdate?.(result)
+    return result
   }
 }
