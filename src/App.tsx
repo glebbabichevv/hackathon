@@ -12,7 +12,6 @@ import { OverviewRadar } from './components/OverviewRadar'
 import { CityMap } from './components/CityMap'
 import { ChatPanel } from './components/ChatPanel'
 import { ToastContainer, type Toast } from './components/ToastContainer'
-import { DataSourcesBadge } from './components/DataSourcesBadge'
 import { LiveDataBar } from './components/LiveDataBar'
 import { EcologyRealPanel } from './components/EcologyRealPanel'
 import { AIProviderSelector } from './components/AIProviderSelector'
@@ -41,7 +40,7 @@ const TABS = [
 export default function App() {
   const [state, setState] = useState<CityState>(cityData)
   const [activeTab, setActiveTab] = useState('all')
-  const [lastUpdate, setLastUpdate] = useState(new Date().toLocaleTimeString('ru-RU'))
+  const [now, setNow] = useState(new Date())
   const [newAlertIds, setNewAlertIds] = useState<Set<string>>(new Set())
   const [isGenerating, setIsGenerating] = useState(false)
   const [isCrisis, setIsCrisis] = useState(false)
@@ -64,8 +63,21 @@ export default function App() {
   })
 
   const pendingAnalysis = useRef(0)
-
   const allAlerts = Object.values(state.sectors).flatMap(s => s.alerts)
+
+  // ── Живые часы — тикают каждую секунду ─────────────────────────────────────
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  // ── Обновляем timestamp в стейте города каждую минуту ──────────────────────
+  useEffect(() => {
+    const id = setInterval(() => {
+      setState(prev => ({ ...prev, timestamp: new Date().toLocaleString('ru-RU') }))
+    }, 60000)
+    return () => clearInterval(id)
+  }, [])
 
   const removeToast = useCallback((id: string) => {
     setToasts(prev => prev.filter(t => t.id !== id))
@@ -73,7 +85,6 @@ export default function App() {
 
   const handleRefreshData = useCallback(() => {
     setState(refreshData())
-    setLastUpdate(new Date().toLocaleTimeString('ru-RU'))
   }, [])
 
   const handleAnalyze = useCallback(() => {
@@ -104,22 +115,19 @@ export default function App() {
         },
       }
     })
-    setLastUpdate(new Date().toLocaleTimeString('ru-RU'))
 
-    // Mark as new (badge clears after 45s)
     setNewAlertIds(prev => new Set([...prev, incident.id]))
     setTimeout(() => {
       setNewAlertIds(prev => { const s = new Set(prev); s.delete(incident.id); return s })
     }, 45000)
 
-    // Toast notification
     setToasts(prev => [
       ...prev.slice(-3),
       { id: `toast_${incident.id}`, alert: incident },
     ])
   }, [])
 
-  // Auto-generate incident every 60s
+  // ── Генерация инцидента каждые 60 сек ──────────────────────────────────────
   useEffect(() => {
     const id = setInterval(async () => {
       if (isGenerating) return
@@ -141,30 +149,28 @@ export default function App() {
     return () => clearInterval(id)
   }, [state, isGenerating, addIncidentToState, handleAnalyze])
 
-  // Auto-refresh KPI values every 30s
+  // ── KPI флуктуации каждые 30 сек ───────────────────────────────────────────
   useEffect(() => {
     const id = setInterval(handleRefreshData, 30000)
     return () => clearInterval(id)
   }, [handleRefreshData])
 
-  // Fetch real data and apply to state
+  // ── Погода + AQI каждые 2 минуты ───────────────────────────────────────────
   const fetchAndApplyRealData = useCallback(async () => {
     const data = await fetchRealData()
     if (data) {
       setRealData(data)
       setState(prev => applyRealData(prev, data))
-      setLastUpdate(new Date().toLocaleTimeString('ru-RU'))
     }
   }, [])
 
-  // Real data: fetch on mount and every 5 minutes
   useEffect(() => {
     fetchAndApplyRealData()
-    const id = setInterval(fetchAndApplyRealData, 5 * 60 * 1000)
+    const id = setInterval(fetchAndApplyRealData, 2 * 60 * 1000)
     return () => clearInterval(id)
   }, [fetchAndApplyRealData])
 
-  // USGS earthquakes + WAQI stations every 10 min
+  // ── USGS землетрясения + WAQI станции каждые 10 мин ────────────────────────
   useEffect(() => {
     const load = async () => {
       const [quakes, stations] = await Promise.allSettled([
@@ -181,7 +187,6 @@ export default function App() {
         for (const alert of newAlerts) {
           const sec = updated.sectors[alert.sector as SectorKey]
           if (!sec) continue
-          // Заменяем старые записи того же источника, добавляем новые
           const filtered = sec.alerts.filter(a => a.id !== alert.id)
           updated.sectors[alert.sector as SectorKey] = {
             ...sec,
@@ -196,7 +201,7 @@ export default function App() {
     return () => clearInterval(id)
   }, [])
 
-  // HERE Traffic incidents every 2 min
+  // ── HERE Traffic ДТП каждые 2 мин ──────────────────────────────────────────
   useEffect(() => {
     const load = async () => {
       const incidents = await fetchHereTrafficIncidents()
@@ -220,7 +225,7 @@ export default function App() {
     return () => clearInterval(id)
   }, [])
 
-  // OpenWeatherMap air pollution every 30 min
+  // ── OpenWeatherMap AQI каждые 30 мин ───────────────────────────────────────
   useEffect(() => {
     const load = async () => {
       const [current, forecast] = await Promise.allSettled([
@@ -235,7 +240,7 @@ export default function App() {
     return () => clearInterval(id)
   }, [])
 
-  // 2GIS traffic congestion every 10 min
+  // ── 2GIS трафик каждые 10 мин ──────────────────────────────────────────────
   useEffect(() => {
     const load = async () => {
       const routes = await fetchAlmatyTraffic()
@@ -258,12 +263,10 @@ export default function App() {
     return () => clearInterval(id)
   }, [])
 
-  // Correlations + predictions whenever state or weather updates
+  // ── Корреляции + прогнозы при изменении данных ─────────────────────────────
   useEffect(() => {
     if (!realData) return
     setCorrelations(runCorrelationEngine(state, realData.weather))
-
-    // Прогнозы для критичных KPI
     const preds: PredictionSeries[] = []
     for (const sector of Object.values(state.sectors)) {
       for (const kpi of sector.kpis) {
@@ -276,10 +279,8 @@ export default function App() {
     setPredictions(preds.slice(0, 6))
   }, [state, realData])
 
-  // Auto-analyze on mount
-  useEffect(() => {
-    handleAnalyze()
-  }, [])
+  // ── Первичный AI-анализ при загрузке ───────────────────────────────────────
+  useEffect(() => { handleAnalyze() }, [])
 
   const handleSimulateCrisis = useCallback(async () => {
     if (isCrisis) return
@@ -307,6 +308,9 @@ export default function App() {
       ? allAlerts
       : allAlerts.filter(a => a.sector === activeTab)
 
+  const currentTime = now.toLocaleTimeString('ru-RU')
+  const currentDate = now.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })
+
   return (
     <div className="min-h-screen bg-[#060d1f] grid-bg text-slate-200">
       {!roleSelected && (
@@ -319,12 +323,12 @@ export default function App() {
       <CityHeader
         state={state}
         onRefresh={handleRefreshData}
-        lastUpdate={lastUpdate}
+        currentTime={currentTime}
+        currentDate={currentDate}
         weather={realData?.weather}
         dataFetchedAt={realData?.fetchedAt}
       />
 
-      {/* Live data ticker — реальные данные Open-Meteo */}
       {realData && <LiveDataBar data={realData} />}
 
       <div className="max-w-[1600px] mx-auto px-4 md:px-6 py-6 flex flex-col gap-6">
@@ -379,7 +383,6 @@ export default function App() {
             )}
             {activeTab !== 'map' && activeTab !== 'chat' && (
               <>
-                {/* Реальная панель экологии */}
                 {realData && (activeTab === 'ecology' || activeTab === 'all') && (
                   <EcologyRealPanel
                     airQuality={realData.airQuality}
@@ -433,7 +436,6 @@ export default function App() {
         </footer>
       </div>
 
-      {/* Toast notifications */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   )

@@ -4,7 +4,8 @@ import type { WeatherData } from '../services/realDataService'
 interface Props {
   state: CityState
   onRefresh: () => void
-  lastUpdate: string
+  currentTime: string
+  currentDate: string
   weather?: WeatherData | null
   dataFetchedAt?: string
 }
@@ -23,7 +24,7 @@ const scoreLabel = (score: number) => {
   return 'КРИЗИС'
 }
 
-export function CityHeader({ state, onRefresh, lastUpdate, weather, dataFetchedAt }: Props) {
+export function CityHeader({ state, onRefresh, currentTime, currentDate, weather, dataFetchedAt }: Props) {
   const color = scoreColor(state.overallScore)
   const label = scoreLabel(state.overallScore)
 
@@ -35,7 +36,7 @@ export function CityHeader({ state, onRefresh, lastUpdate, weather, dataFetchedA
     <header className="border-b border-[#1a3050] bg-[#060d1f] sticky top-0 z-50">
       <div className="max-w-[1600px] mx-auto px-6 py-3 flex items-center justify-between gap-4">
 
-        {/* Left: branding */}
+        {/* Left: branding + score */}
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center text-sm font-black">
@@ -47,7 +48,6 @@ export function CityHeader({ state, onRefresh, lastUpdate, weather, dataFetchedA
             </div>
           </div>
 
-          {/* Divider */}
           <div className="hidden md:block w-px h-8 bg-[#1a3050]" />
 
           {/* City health score */}
@@ -56,12 +56,8 @@ export function CityHeader({ state, onRefresh, lastUpdate, weather, dataFetchedA
               <svg className="w-12 h-12 -rotate-90" viewBox="0 0 44 44">
                 <circle cx="22" cy="22" r="18" fill="none" stroke="#1a3050" strokeWidth="4" />
                 <circle
-                  cx="22"
-                  cy="22"
-                  r="18"
-                  fill="none"
-                  stroke={color}
-                  strokeWidth="4"
+                  cx="22" cy="22" r="18" fill="none"
+                  stroke={color} strokeWidth="4"
                   strokeDasharray={`${(state.overallScore / 100) * 113} 113`}
                   strokeLinecap="round"
                 />
@@ -77,8 +73,9 @@ export function CityHeader({ state, onRefresh, lastUpdate, weather, dataFetchedA
           </div>
         </div>
 
-        {/* Right: alerts + time + refresh */}
+        {/* Right */}
         <div className="flex items-center gap-4">
+
           {/* Alert counters */}
           <div className="hidden sm:flex items-center gap-2">
             {critCount > 0 && (
@@ -112,24 +109,24 @@ export function CityHeader({ state, onRefresh, lastUpdate, weather, dataFetchedA
               {dataFetchedAt && (
                 <span className="flex items-center gap-1 text-[10px] text-green-400 border-l border-[#1a3050] pl-2">
                   <span className="w-1 h-1 bg-green-400 rounded-full animate-pulse" />
-                  LIVE {dataFetchedAt}
+                  {dataFetchedAt}
                 </span>
               )}
             </div>
           )}
 
-          {/* Live indicator */}
-          <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
-            <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
-            <span className="hidden sm:inline">KPI {lastUpdate}</span>
+          {/* Live clock */}
+          <div className="flex flex-col items-end">
+            <span className="text-sm font-bold text-white tabular-nums">{currentTime}</span>
+            <span className="text-[10px] text-slate-500">{currentDate} · Алматы</span>
           </div>
 
-          {/* Refresh button */}
+          {/* Refresh */}
           <button
             onClick={onRefresh}
             className="text-xs text-cyan-400 border border-cyan-400/30 hover:border-cyan-400 hover:bg-cyan-400/10 px-3 py-1.5 rounded-lg transition-all duration-200"
           >
-            ⟳ Обновить
+            ⟳
           </button>
         </div>
       </div>
