@@ -94,7 +94,6 @@ export async function analyzeCity(
       for await (const chunk of stream) {
         if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
           fullText += chunk.delta.text
-          onUpdate?.({ loading: true, summary: fullText.slice(0, 80) + '…' })
         }
       }
       const result = parseJSON(fullText)
@@ -110,7 +109,6 @@ export async function analyzeCity(
       ollamaModel,
       partial => {
         fullText = partial
-        onUpdate?.({ loading: true, summary: partial.slice(0, 80) + '…' })
       }
     )
     const result = parseJSON(fullText)
@@ -131,7 +129,6 @@ export async function analyzeCity(
         for await (const chunk of stream) {
           if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
             fullText += chunk.delta.text
-            onUpdate?.({ loading: true, summary: fullText.slice(0, 80) + '…' })
           }
         }
         const result = parseJSON(fullText)
