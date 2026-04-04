@@ -27,10 +27,10 @@ const sectorLabel: Record<string, string> = {
 }
 
 const sectorIcon: Record<string, string> = {
-  transport: '🚗',
-  ecology: '🌿',
-  safety: '🛡️',
-  utilities: '⚙️',
+  transport: 'T',
+  ecology: 'E',
+  safety: 'S',
+  utilities: 'U',
 }
 
 // Алматы bbox — инциденты вне этого диапазона не показываем на карте
@@ -296,7 +296,7 @@ export function CityMap({ alerts, newAlertIds }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-3 border-b border-[#1a3050]">
         <div className="flex items-center gap-3">
-          <span className="text-xl">🗺️</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg>
           <div>
             <h2 className="text-sm font-bold text-white">Карта инцидентов</h2>
             <p className="text-[11px] text-slate-500">Алматы · 2GIS · реальное время</p>
@@ -363,7 +363,7 @@ export function CityMap({ alerts, newAlertIds }: Props) {
             }}
           />
           {searchLoading && (
-            <span style={{ position: 'absolute', right: 10, fontSize: 12, color: '#475569' }}>⏳</span>
+            <span style={{ position: 'absolute', right: 10, fontSize: 12, color: '#475569' }}>...</span>
           )}
           {searchQuery && !searchLoading && (
             <button
@@ -479,7 +479,7 @@ export function CityMap({ alerts, newAlertIds }: Props) {
                 lineHeight: 1.5,
                 marginBottom: 8,
               }}>
-                🤖 {popup.aiText}
+                {popup.aiText}
               </div>
             )}
 
@@ -500,7 +500,7 @@ export function CityMap({ alerts, newAlertIds }: Props) {
                   fontWeight: 600,
                 }}
               >
-                {popup.aiLoading ? '⏳ Анализ...' : '🤖 Claude анализ'}
+                {popup.aiLoading ? 'Анализ...' : 'AI анализ'}
               </button>
               <button
                 onClick={() => popup.routeActive ? clearRoute() : buildRoute(popup.alert)}

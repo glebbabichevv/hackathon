@@ -21,7 +21,7 @@ export function SectorPanel({ sector }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="text-2xl">{sector.icon}</span>
+          <span className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black" style={{ background: sector.color + '22', border: `1px solid ${sector.color}55`, color: sector.color }}>{sector.icon}</span>
           <h2 className="text-lg font-bold text-white">{sector.label}</h2>
         </div>
         <div className="flex gap-2">

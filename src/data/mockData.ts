@@ -49,7 +49,7 @@ function genSmartHistory(base: number, pattern: HistoryPattern, jitter = 0.04): 
 const transportSector: Sector = {
   key: 'transport',
   label: 'Транспорт',
-  icon: '🚗',
+  icon: 'T',
   color: '#2979ff',
   kpis: [
     {
@@ -105,7 +105,7 @@ const transportSector: Sector = {
 const ecologySector: Sector = {
   key: 'ecology',
   label: 'Экология',
-  icon: '🌿',
+  icon: 'E',
   color: '#00e676',
   kpis: [
     {
@@ -161,7 +161,7 @@ const ecologySector: Sector = {
 const safetySector: Sector = {
   key: 'safety',
   label: 'Безопасность',
-  icon: '🛡️',
+  icon: 'S',
   color: '#ff6d00',
   kpis: [
     {
@@ -217,7 +217,7 @@ const safetySector: Sector = {
 const utilitiesSector: Sector = {
   key: 'utilities',
   label: 'ЖКХ',
-  icon: '⚙️',
+  icon: 'U',
   color: '#d500f9',
   kpis: [
     {

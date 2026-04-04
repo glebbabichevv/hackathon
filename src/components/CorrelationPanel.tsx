@@ -2,7 +2,7 @@ import type { CorrelationAlert } from '../services/correlationEngine'
 import type { AnomalyItem } from '../App'
 
 const sectorIcon: Record<string, string> = {
-  transport: '🚗', ecology: '🌿', safety: '🛡️', utilities: '⚙️',
+  transport: 'T', ecology: 'E', safety: 'S', utilities: 'U',
 }
 
 interface Props {
@@ -31,11 +31,10 @@ export function CorrelationPanel({ correlations, anomalies = [] }: Props) {
         {correlations.map(corr => (
           <div
             key={corr.id}
-            className={`rounded-xl border p-4 ${
-              corr.severity === 'critical'
+            className={`rounded-xl border p-4 ${corr.severity === 'critical'
                 ? 'border-red-500/40 bg-red-500/8'
                 : 'border-yellow-500/30 bg-yellow-500/5'
-            }`}
+              }`}
           >
             <div className="flex items-start justify-between gap-2 mb-2">
               <div className="flex items-center gap-2">
@@ -46,9 +45,8 @@ export function CorrelationPanel({ correlations, anomalies = [] }: Props) {
                 <div className="flex items-center gap-1 border border-purple-400/30 bg-purple-400/10 rounded-full px-2 py-0.5">
                   <span className="text-[10px] font-bold text-purple-300">{corr.confidence}%</span>
                 </div>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                  corr.severity === 'critical' ? 'bg-red-500 text-white' : 'bg-yellow-400 text-black'
-                }`}>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${corr.severity === 'critical' ? 'bg-red-500 text-white' : 'bg-yellow-400 text-black'
+                  }`}>
                   {corr.severity === 'critical' ? 'КРИТИЧНО' : 'ВНИМАНИЕ'}
                 </span>
               </div>

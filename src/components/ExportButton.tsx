@@ -103,7 +103,7 @@ ${Object.values(state.sectors).flatMap(s => s.kpis).map(k => `
 </table>
 
 <div class="footer">
-  Сформировано: ${new Date().toLocaleString('ru-RU')} · Smart City Almaty Dashboard<br/>
+  Сформировано: ${new Date().toLocaleString('ru-RU')} · RiseOS<br/>
   Данные: Open-Meteo (погода + CAMS качество воздуха) · USGS (сейсмика) · AI-анализ: Ollama / Claude
 </div>
 </body></html>`)
@@ -205,7 +205,7 @@ ${Object.values(state.sectors).flatMap(s => s.kpis).map(k => `
 </table>
 
 <div class="footer">
-  Сформировано: ${datetime} · Smart City Almaty Dashboard<br/>
+  Сформировано: ${datetime} · RiseOS<br/>
   Данные: Open-Meteo · CAMS · USGS · HERE Traffic · WAQI · OpenWeatherMap · 2GIS · AI: Ollama
 </div>
 </body></html>`
@@ -214,7 +214,7 @@ ${Object.values(state.sectors).flatMap(s => s.kpis).map(k => `
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `smart-city-report-${date.replace(/\./g, '-')}.html`
+    a.download = `riseos-report-${date.replace(/\./g, '-')}.html`
     a.click()
     URL.revokeObjectURL(url)
   }

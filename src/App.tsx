@@ -42,13 +42,13 @@ export interface AnomalyItem {
 }
 
 const TABS = [
-  { id: 'all', label: 'Все секторы' },
-  { id: 'map', label: '🗺️ Карта' },
-  { id: 'chat', label: '💬 ИИ Чат' },
-  { id: 'transport', label: '🚗 Транспорт' },
-  { id: 'ecology', label: '🌿 Экология' },
-  { id: 'safety', label: '🛡️ Безопасность' },
-  { id: 'utilities', label: '⚙️ ЖКХ' },
+  { id: 'all',       label: 'Все секторы'  },
+  { id: 'map',       label: 'Карта'        },
+  { id: 'chat',      label: 'ИИ Чат'       },
+  { id: 'transport', label: 'Транспорт'    },
+  { id: 'ecology',   label: 'Экология'     },
+  { id: 'safety',    label: 'Безопасность' },
+  { id: 'utilities', label: 'ЖКХ'          },
 ]
 
 export default function App() {
@@ -562,8 +562,8 @@ export default function App() {
 
             <div className="rounded-2xl border border-[#1a3050] bg-[#0a1628] p-5">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-base font-bold text-white flex items-center gap-2">
-                  <span>🚨</span> Инциденты
+                <h2 className="text-base font-bold text-white">
+                  Инциденты
                 </h2>
                 <div className="flex items-center gap-2">
                   {newAlertIds.size > 0 && (

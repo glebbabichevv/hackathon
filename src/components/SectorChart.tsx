@@ -37,8 +37,8 @@ export function SectorChart({ sector, kpiId }: Props) {
   const dataWithTick = data.map((d, i) => ({ ...d, showTick: i % 4 === 0 }))
 
   return (
-    <div className="h-48">
-      <ResponsiveContainer width="100%" height="100%">
+    <div className="h-48" style={{ minWidth: 0 }}>
+      <ResponsiveContainer width="100%" height="100%" minWidth={1}>
         <AreaChart data={dataWithTick} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
           <defs>
             <linearGradient id={`grad_${kpiId}`} x1="0" y1="0" x2="0" y2="1">

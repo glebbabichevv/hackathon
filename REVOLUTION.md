@@ -1,4 +1,4 @@
-# 🚀 REVOLUTION PLAN — Smart City Almaty Dashboard
+# 🚀 REVOLUTION PLAN — RiseOS
 > Полный план доработки для победы на хакатоне. Без mock-данных. Реальные данные + реальный AI.
 
 ---
@@ -811,7 +811,7 @@ export function ExportButton({ state, analysis }: { state: CityState, analysis: 
       <div class="section"><h3>✅ Рекомендуемые действия</h3><p>${analysis.whatToDo}</p></div>
       <h3>📈 Прогнозы на ближайшие 2 часа</h3>
       <ul>${analysis.predictions.map(p => `<li>${p}</li>`).join('')}</ul>
-      <div class="footer">Сформировано системой Smart City Almaty Dashboard · AI-анализ на основе Ollama llama3.2</div>
+      <div class="footer">Сформировано системой RiseOS · AI-анализ на основе Ollama llama3.2</div>
       </body></html>
     `)
     printWindow.document.close()

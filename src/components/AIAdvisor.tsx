@@ -38,15 +38,21 @@ export function AIAdvisor({ analysis, onRefresh, provider = 'ollama' }: Props) {
       <div className="flex items-center justify-between px-5 py-4 border-b border-[#1a3050] bg-gradient-to-r from-[#00d4ff10] to-transparent">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <span className="text-2xl">🤖</span>
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-600/20 border border-cyan-500/30 flex items-center justify-center">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/>
+                <circle cx="9" cy="13" r="1" fill="#22d3ee" stroke="none"/>
+                <circle cx="15" cy="13" r="1" fill="#22d3ee" stroke="none"/>
+              </svg>
+            </div>
             {analysis.loading && (
-              <span className="absolute -top-1 -right-1 w-3 h-3 bg-cyan-400 rounded-full animate-ping" />
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-cyan-400 rounded-full animate-ping" />
             )}
           </div>
           <div>
             <h2 className="text-base font-bold text-white">AI-Аналитик</h2>
             <p className="text-[11px] text-slate-500">
-              {provider === 'claude' ? '☁️ Claude · Anthropic API' : '🦙 Ollama · Локальный AI'}
+              {provider === 'claude' ? 'Claude · Anthropic API' : 'Ollama · Локальный AI'}
               {' · '}Анализ в реальном времени
             </p>
           </div>
@@ -55,11 +61,10 @@ export function AIAdvisor({ analysis, onRefresh, provider = 'ollama' }: Props) {
           {analysis.whatHappening && (
             <button
               onClick={handleSpeak}
-              className={`text-xs border px-3 py-1.5 rounded-lg transition-all duration-200 ${
-                speaking
+              className={`text-xs border px-3 py-1.5 rounded-lg transition-all duration-200 ${speaking
                   ? 'border-orange-400/60 bg-orange-400/10 text-orange-400'
                   : 'border-slate-600 text-slate-400 hover:border-slate-500'
-              }`}
+                }`}
             >
               {speaking ? '⏹ Стоп' : '🔊'}
             </button>

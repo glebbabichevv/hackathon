@@ -124,7 +124,13 @@ export function ChatPanel({ state, provider = 'claude', ollamaModel = 'llama3.2'
       {/* Header */}
       <div className="flex items-center gap-3 px-5 py-3 border-b border-[#1a3050] bg-gradient-to-r from-[#00d4ff08] to-transparent flex-shrink-0">
         <div className="relative">
-          <span className="text-2xl">🤖</span>
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-600/20 border border-cyan-500/30 flex items-center justify-center">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/>
+                <circle cx="9" cy="13" r="1" fill="#22d3ee" stroke="none"/>
+                <circle cx="15" cy="13" r="1" fill="#22d3ee" stroke="none"/>
+              </svg>
+            </div>
           {isStreaming && (
             <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-cyan-400 rounded-full animate-ping" />
           )}

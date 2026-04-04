@@ -31,8 +31,8 @@ export function OverviewRadar({ state }: Props) {
   return (
     <div className="rounded-2xl border border-[#1a3050] bg-[#0a1628] p-5">
       <h3 className="text-sm font-bold text-slate-300 mb-3">Индекс по секторам</h3>
-      <div className="h-64">
-        <ResponsiveContainer width="100%" height="100%">
+      <div className="h-64" style={{ minWidth: 0 }}>
+        <ResponsiveContainer width="100%" height="100%" minWidth={1}>
           <RadarChart data={data}>
             <PolarGrid stroke="#1a3050" />
             <PolarAngleAxis

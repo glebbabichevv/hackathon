@@ -14,10 +14,10 @@ const sectorLabel: Record<string, string> = {
 }
 
 const sectorIcon: Record<string, string> = {
-  transport: '🚗',
-  ecology: '🌿',
-  safety: '🛡️',
-  utilities: '⚙️',
+  transport: 'T',
+  ecology: 'E',
+  safety: 'S',
+  utilities: 'U',
 }
 
 const severityStyle = {

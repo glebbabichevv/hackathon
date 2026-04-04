@@ -1,9 +1,9 @@
 const ROLES = [
-  { id: 'akim',      label: 'Аким города',           labelKz: 'Қала әкімі',          icon: '🏛️', focus: 'all' },
-  { id: 'transport', label: 'Нач. транспорта',        labelKz: 'Көлік басшысы',       icon: '🚗', focus: 'transport' },
-  { id: 'ecology',   label: 'Нач. экологии',          labelKz: 'Экология басшысы',    icon: '🌿', focus: 'ecology' },
-  { id: 'utilities', label: 'Нач. ЖКХ',               labelKz: 'ТКШ басшысы',         icon: '⚙️', focus: 'utilities' },
-  { id: 'safety',    label: 'Нач. безопасности',      labelKz: 'Қауіпсіздік басшысы', icon: '🛡️', focus: 'safety' },
+  { id: 'akim',      label: 'Аким города',      labelKz: 'Қала әкімі',         icon: 'A', focus: 'all'       },
+  { id: 'transport', label: 'Нач. транспорта',  labelKz: 'Көлік басшысы',      icon: 'T', focus: 'transport' },
+  { id: 'ecology',   label: 'Нач. экологии',    labelKz: 'Экология басшысы',   icon: 'E', focus: 'ecology'   },
+  { id: 'utilities', label: 'Нач. ЖКХ',         labelKz: 'ТКШ басшысы',        icon: 'U', focus: 'utilities' },
+  { id: 'safety',    label: 'Нач. безопасности', labelKz: 'Қауіпсіздік басшысы', icon: 'S', focus: 'safety' },
 ]
 
 interface Props {
@@ -21,7 +21,7 @@ export function RoleSelector({ onSelect }: Props) {
               SC
             </div>
             <div className="text-left">
-              <p className="text-xl font-bold text-white">Smart City Dashboard</p>
+              <p className="text-xl font-bold text-white">RiseOS</p>
               <p className="text-sm text-slate-400">Алматы · Панель управленческих решений</p>
             </div>
           </div>
