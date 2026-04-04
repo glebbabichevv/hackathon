@@ -32,11 +32,40 @@ export function ChatPanel({ state, provider = 'claude', ollamaModel = 'llama3.2'
   const [input, setInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamingId, setStreamingId] = useState<string | null>(null)
-  const bottomRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const scrollRef    = useRef<HTMLDivElement>(null)
+  const inputRef     = useRef<HTMLInputElement>(null)
+  const msgCountRef   = useRef(messages.length)
+  const nearBottomRef = useRef(false) // false on mount — don't auto-scroll until user sends
 
+  // Track whether the user is near the bottom
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const el = scrollRef.current
+    if (!el) return
+    const onScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = el
+      nearBottomRef.current = scrollHeight - scrollTop - clientHeight < 80
+    }
+    el.addEventListener('scroll', onScroll, { passive: true })
+    return () => el.removeEventListener('scroll', onScroll)
+  }, [])
+
+  // Only scroll when a new message arrives or streaming while already at bottom
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+
+    const newMessageAdded = messages.length > msgCountRef.current
+    msgCountRef.current = messages.length
+
+    if (newMessageAdded) {
+      // New message sent/received — scroll and enable follow mode
+      nearBottomRef.current = true
+      el.scrollTop = el.scrollHeight
+    } else if (nearBottomRef.current) {
+      // Streaming token — only follow if user hasn't scrolled up
+      el.scrollTop = el.scrollHeight
+    }
+    // No scroll on mount or tab switch
   }, [messages])
 
   const handleSend = useCallback(async (text: string) => {
@@ -130,7 +159,7 @@ export function ChatPanel({ state, provider = 'claude', ollamaModel = 'llama3.2'
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-4 min-h-0">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-4 min-h-0">
         {messages.map(msg => (
           <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             {msg.role === 'assistant' && (
@@ -169,7 +198,6 @@ export function ChatPanel({ state, provider = 'claude', ollamaModel = 'llama3.2'
             </div>
           </div>
         ))}
-        <div ref={bottomRef} />
       </div>
 
       {/* Input */}

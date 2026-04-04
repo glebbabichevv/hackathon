@@ -26,6 +26,33 @@ const scoreLabel = (score: number) => {
   return 'КРИЗИС'
 }
 
+function RiseOSLogo() {
+  return (
+    <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="logoGrad" x1="0" y1="36" x2="36" y2="0" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#0ea5e9" />
+          <stop offset="100%" stopColor="#6366f1" />
+        </linearGradient>
+        <linearGradient id="logoGrad2" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#0ea5e9" stopOpacity="0.15" />
+          <stop offset="100%" stopColor="#6366f1" stopOpacity="0.05" />
+        </linearGradient>
+      </defs>
+      {/* Background */}
+      <rect width="36" height="36" rx="10" fill="url(#logoGrad2)" />
+      <rect width="36" height="36" rx="10" fill="none" stroke="url(#logoGrad)" strokeWidth="1" strokeOpacity="0.6" />
+      {/* Rising bars — city skyline / data bars */}
+      <rect x="7"  y="22" width="4" height="8"  rx="1.5" fill="url(#logoGrad)" opacity="0.5" />
+      <rect x="13" y="16" width="4" height="14" rx="1.5" fill="url(#logoGrad)" opacity="0.75" />
+      <rect x="19" y="10" width="4" height="20" rx="1.5" fill="url(#logoGrad)" />
+      <rect x="25" y="14" width="4" height="16" rx="1.5" fill="url(#logoGrad)" opacity="0.65" />
+      {/* Rising arrow tip */}
+      <path d="M21 7 L24 11 L18 11 Z" fill="url(#logoGrad)" />
+    </svg>
+  )
+}
+
 export function CityHeader({ state, onRefresh, currentTime, currentDate, weather, dataFetchedAt, roleLabel, roleIcon }: Props) {
   const color = scoreColor(state.overallScore)
   const label = scoreLabel(state.overallScore)
@@ -36,21 +63,21 @@ export function CityHeader({ state, onRefresh, currentTime, currentDate, weather
 
   return (
     <header className="border-b border-[#1a3050] bg-[#060d1f] sticky top-0 z-50">
+      {/* Top accent line */}
+      <div className="h-px bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
+
       <div className="max-w-[1600px] mx-auto px-6 py-3 flex items-center justify-between gap-4">
 
         {/* Left: branding + score */}
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center text-sm font-black">
-              SC
-            </div>
+          <div className="flex items-center gap-3">
+            <RiseOSLogo />
             <div>
-              <p className="text-sm font-bold text-white leading-none">Smart City Dashboard</p>
-              <p className="text-[10px] text-slate-500">{state.city} · Панель управленческих решений</p>
+              <p className="text-sm font-bold text-white leading-none tracking-widest uppercase">RiseOS</p>
+              <p className="text-[10px] text-slate-500">{state.city} · Smart City Platform</p>
             </div>
           </div>
 
-          {/* Бейдж текущей роли */}
           {roleLabel && (
             <div className="hidden md:flex items-center gap-1.5 bg-cyan-400/10 border border-cyan-400/30 rounded-full px-2.5 py-1">
               {roleIcon && <span className="text-sm">{roleIcon}</span>}
@@ -102,7 +129,7 @@ export function CityHeader({ state, onRefresh, currentTime, currentDate, weather
             )}
           </div>
 
-          {/* Weather widget */}
+          {/* Weather */}
           {weather && (
             <div className="hidden md:flex items-center gap-2 border border-[#1a3050] rounded-lg px-3 py-1.5">
               <span className="text-lg">{weather.icon}</span>
@@ -125,7 +152,7 @@ export function CityHeader({ state, onRefresh, currentTime, currentDate, weather
             </div>
           )}
 
-          {/* Live clock */}
+          {/* Clock */}
           <div className="flex flex-col items-end">
             <span className="text-sm font-bold text-white tabular-nums">{currentTime}</span>
             <span className="text-[10px] text-slate-500">{currentDate} · Алматы</span>
