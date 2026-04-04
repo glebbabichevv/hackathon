@@ -1,7 +1,13 @@
+import Anthropic from '@anthropic-ai/sdk'
 import type { CityState, Alert, SectorKey, Severity } from '../types/city'
 import { streamOllamaChat } from './ollamaService'
 
 const OLLAMA_MODEL = import.meta.env.VITE_OLLAMA_MODEL || 'llama3.2'
+
+const anthropic = new Anthropic({
+  apiKey: import.meta.env.VITE_ANTHROPIC_API_KEY || '',
+  dangerouslyAllowBrowser: true,
+})
 
 const ALMATY_LOCATIONS: Record<SectorKey, string[]> = {
   transport: [
@@ -74,12 +80,24 @@ export async function generateIncident(state: CityState): Promise<Alert | null> 
 
   try {
     let fullText = ''
-    await streamOllamaChat(
-      'Ты — система генерации городских инцидентов Алматы. Отвечай СТРОГО на русском языке. JSON формат без markdown.',
-      [{ role: 'user', content: prompt }],
-      OLLAMA_MODEL,
-      partial => { fullText = partial }
-    )
+
+    // Try Claude first, fall back to Ollama
+    if (import.meta.env.VITE_ANTHROPIC_API_KEY) {
+      const msg = await anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 300,
+        system: 'Ты — система генерации городских инцидентов Алматы. Отвечай СТРОГО на русском языке. Возвращай ТОЛЬКО валидный JSON без markdown.',
+        messages: [{ role: 'user', content: prompt }],
+      })
+      fullText = msg.content[0].type === 'text' ? msg.content[0].text : ''
+    } else {
+      await streamOllamaChat(
+        'Ты — система генерации городских инцидентов Алматы. Отвечай СТРОГО на русском языке. JSON формат без markdown.',
+        [{ role: 'user', content: prompt }],
+        OLLAMA_MODEL,
+        partial => { fullText = partial }
+      )
+    }
 
     const cleaned = fullText.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim()
     const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
