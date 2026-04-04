@@ -4,7 +4,6 @@ const HERE_KEY = import.meta.env.VITE_HERE_API_KEY
 // Алматы центр, радиус 20 км
 const ALMATY_LAT = 43.2565
 const ALMATY_LON = 76.9285
-const RADIUS = 20000
 
 export interface HereIncident {
   id: string

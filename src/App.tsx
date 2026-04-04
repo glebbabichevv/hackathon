@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { cityData, refreshData } from './data/mockData'
+import { cityData } from './data/mockData'
 import type { CityState, AIAnalysis, SectorKey } from './types/city'
 import { analyzeCity } from './services/aiService'
 import { generateIncident, generateCrisis } from './services/incidentGenerator'
@@ -86,8 +86,8 @@ export default function App() {
   // Координаты для корреляционных алертов на карте (по сектору)
   const CORR_COORDS: Record<string, [number, number]> = {
     transport: [43.2600, 76.9380],
-    ecology:   [43.2900, 76.8900],
-    safety:    [43.2680, 76.9420],
+    ecology: [43.2900, 76.8900],
+    safety: [43.2680, 76.9420],
     utilities: [43.2510, 76.9460],
   }
   const correlationMapAlerts = correlations.map(c => {
@@ -485,11 +485,10 @@ export default function App() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex-shrink-0 text-sm px-4 py-2 rounded-xl border transition-all duration-200 ${
-                  activeTab === tab.id
+                className={`flex-shrink-0 text-sm px-4 py-2 rounded-xl border transition-all duration-200 ${activeTab === tab.id
                     ? 'bg-cyan-400/20 border-cyan-400/60 text-cyan-300 font-semibold'
                     : 'border-[#1a3050] text-slate-400 hover:border-slate-500 hover:text-slate-300'
-                }`}
+                  }`}
               >
                 {tab.label}
                 {tab.id === 'chat' && (
@@ -581,7 +580,7 @@ export default function App() {
         </div>
 
         <footer className="text-center text-xs text-slate-600 py-4 border-t border-[#1a3050]">
-          Smart City Management Dashboard · MVP · Алматы · AI-мониторинг в реальном времени
+          RiseOS · MVP · Алматы · AI-мониторинг в реальном времени
         </footer>
       </div>
 
