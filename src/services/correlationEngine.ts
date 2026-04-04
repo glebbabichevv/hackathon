@@ -29,7 +29,7 @@ export function runCorrelationEngine(
   const incidents  = getKpi('safety', 'incidents')
 
   // Правило 1: Дождь + час пик + высокий трафик = каскад ДТП
-  if (weather.isRaining && traffic > 65 && isPeakHour) {
+  if (weather.isRaining && traffic > 82 && isPeakHour) {
     results.push({
       id: 'corr_rain_peak',
       title: 'Каскадный риск ДТП — час пик + дождь',
@@ -55,12 +55,12 @@ export function runCorrelationEngine(
   }
 
   // Правило 3: Высокий AQI + безветрие + ночь = пиковое загрязнение к утру
-  if (aqi > 60 && weather.windSpeed < 8 && isNight) {
+  if (aqi > 85 && weather.windSpeed < 5 && isNight) {
     results.push({
       id: 'corr_aqi_night',
       title: 'Прогноз: AQI +30% к утру',
       description: `Безветрие (${weather.windSpeed} км/ч) не рассеивает смог. AQI ${aqi} вырастет до ~${Math.round(aqi * 1.3)} к 08:00.`,
-      severity: aqi > 80 ? 'critical' : 'warning',
+      severity: aqi > 110 ? 'critical' : 'warning',
       sectors: ['ecology'],
       recommendation: 'Ограничить пром. выбросы с 22:00 до 08:00. Предупредить жителей о выходе на улицу.',
       confidence: 78,
@@ -68,13 +68,13 @@ export function runCorrelationEngine(
   }
 
   // Правило 4: Пиковая электросеть = риск каскадного отключения
-  if (electricity > 88) {
+  if (electricity > 93) {
     const tempFactor = weather.temperature > 35 ? 'кондиционеры' : weather.temperature < -10 ? 'обогрев' : 'нагрузка'
     results.push({
       id: 'corr_electricity_peak',
       title: `Риск каскадного отключения (${electricity}%)`,
       description: `Нагрузка ${electricity}% — критический порог 95%. Причина: ${tempFactor} (${weather.temperature > 0 ? '+' : ''}${weather.temperature}°C).`,
-      severity: electricity > 93 ? 'critical' : 'warning',
+      severity: electricity > 96 ? 'critical' : 'warning',
       sectors: ['utilities', 'safety'],
       recommendation: 'Включить резервные подстанции. Ограничить промышленное потребление. Готовить аварийные бригады.',
       confidence: 91,
@@ -95,7 +95,7 @@ export function runCorrelationEngine(
   }
 
   // Правило 6: Рост инцидентов ночью
-  if (incidents > 15 && isNight) {
+  if (incidents > 25 && isNight) {
     results.push({
       id: 'corr_crime_night',
       title: 'Рост ночных вызовов экстренных служб',
