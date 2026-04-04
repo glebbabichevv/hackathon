@@ -451,7 +451,7 @@ export default function App() {
   const currentDate = now.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })
 
   return (
-    <div className="min-h-screen bg-[#060d1f] grid-bg text-slate-200">
+    <div className="min-h-screen bg-[#040c1a] grid-bg text-slate-200">
       {!roleSelected && (
         <RoleSelector onSelect={role => {
           sessionStorage.setItem('sc_role', role.id)
@@ -479,37 +479,38 @@ export default function App() {
       <div className="max-w-[1600px] mx-auto px-4 md:px-6 py-6 flex flex-col gap-6">
 
         {/* Tabs + controls */}
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          {/* Tab pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 p-1 rounded-2xl bg-[#07111e] border border-slate-700/40">
             {TABS.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex-shrink-0 text-sm px-4 py-2 rounded-xl border transition-all duration-200 ${activeTab === tab.id
-                    ? 'bg-cyan-400/20 border-cyan-400/60 text-cyan-300 font-semibold'
-                    : 'border-[#1a3050] text-slate-400 hover:border-slate-500 hover:text-slate-300'
+                className={`flex-shrink-0 text-[13px] px-3.5 py-1.5 rounded-xl transition-all duration-200 flex items-center gap-1.5 ${activeTab === tab.id
+                    ? 'bg-gradient-to-r from-sky-500/20 to-violet-500/20 border border-sky-500/30 text-sky-300 font-semibold shadow-[0_0_12px_rgba(14,165,233,0.15)]'
+                    : 'text-slate-500 hover:text-slate-300 hover:bg-white/[0.03]'
                   }`}
               >
                 {tab.label}
                 {tab.id === 'chat' && (
-                  <span className="ml-1.5 text-[10px] bg-cyan-400/30 text-cyan-300 px-1.5 py-0.5 rounded-full">AI</span>
+                  <span className="text-[9px] font-black bg-violet-500/25 text-violet-300 px-1.5 py-0.5 rounded-full border border-violet-500/30">AI</span>
                 )}
               </button>
             ))}
           </div>
 
           <div className="flex items-center gap-2 flex-shrink-0">
-            <div className="flex items-center gap-1.5 text-[11px] text-slate-500 border border-[#1a3050] rounded-lg px-3 py-1.5">
-              <span className={`w-1.5 h-1.5 rounded-full ${isGenerating ? 'bg-cyan-400 animate-ping' : 'bg-green-400 animate-pulse'}`} />
-              {isGenerating ? 'Генерирую...' : 'LIVE мониторинг'}
+            <div className="flex items-center gap-1.5 text-[11px] text-slate-500 bg-[#07111e] border border-slate-700/40 rounded-xl px-3 py-2">
+              <span className={`w-1.5 h-1.5 rounded-full ${isGenerating ? 'bg-sky-400 animate-ping' : 'bg-emerald-400 animate-pulse'}`} />
+              {isGenerating ? 'Генерирую...' : 'LIVE'}
             </div>
             <button
               onClick={handleSimulateCrisis}
               disabled={isCrisis}
-              className="flex items-center gap-2 text-xs font-semibold text-red-400 border border-red-500/40 hover:border-red-500/80 hover:bg-red-500/10 disabled:opacity-50 disabled:cursor-not-allowed px-3 py-1.5 rounded-xl transition-all duration-200"
+              className="flex items-center gap-2 text-xs font-semibold text-red-400 bg-[#07111e] border border-red-500/30 hover:border-red-500/60 hover:bg-red-500/8 disabled:opacity-50 disabled:cursor-not-allowed px-3 py-2 rounded-xl transition-all duration-200"
             >
-              <span className={isCrisis ? 'animate-spin inline-block' : ''}>⚡</span>
-              {isCrisis ? 'Симуляция...' : 'Симуляция кризиса'}
+              <span className={`text-sm ${isCrisis ? 'animate-spin inline-block' : ''}`}>⚡</span>
+              {isCrisis ? 'Симуляция...' : 'Кризис'}
             </button>
           </div>
         </div>
@@ -560,18 +561,19 @@ export default function App() {
             {predictions.length > 0 && <PredictionPanel predictions={predictions} />}
             <OverviewRadar state={state} />
 
-            <div className="rounded-2xl border border-[#1a3050] bg-[#0a1628] p-5">
+            <div className="rounded-2xl border border-slate-700/40 bg-[#07111e] p-5 shadow-[0_4px_24px_rgba(0,0,0,0.35)]">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-base font-bold text-white">
-                  Инциденты
-                </h2>
+                <div>
+                  <h2 className="text-sm font-bold text-white">Инциденты</h2>
+                  <p className="text-[10px] text-slate-600">Активные события</p>
+                </div>
                 <div className="flex items-center gap-2">
                   {newAlertIds.size > 0 && (
-                    <span className="text-[10px] font-bold bg-cyan-400/20 text-cyan-300 border border-cyan-400/40 px-2 py-0.5 rounded-full animate-pulse">
+                    <span className="text-[10px] font-black bg-sky-400/15 text-sky-300 border border-sky-400/30 px-2 py-0.5 rounded-full animate-pulse">
                       +{newAlertIds.size} новых
                     </span>
                   )}
-                  <span className="text-xs text-slate-500">{filteredAlerts.length} активных</span>
+                  <span className="text-[11px] text-slate-500 bg-white/[0.03] border border-slate-700/40 px-2 py-0.5 rounded-full">{filteredAlerts.length}</span>
                 </div>
               </div>
               <AlertPanel alerts={filteredAlerts} newAlertIds={newAlertIds} />
@@ -579,8 +581,8 @@ export default function App() {
           </div>
         </div>
 
-        <footer className="text-center text-xs text-slate-600 py-4 border-t border-[#1a3050]">
-          RiseOS · MVP · Алматы · AI-мониторинг в реальном времени
+        <footer className="text-center text-[11px] text-slate-700 py-4 border-t border-slate-800/60">
+          RiseOS · Алматы · AI-мониторинг в реальном времени · Open-Meteo · USGS · 2GIS
         </footer>
       </div>
 

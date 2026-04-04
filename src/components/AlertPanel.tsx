@@ -1,10 +1,36 @@
 import type { Alert, Severity } from '../types/city'
 
-const severityStyle: Record<Severity, { dot: string; border: string; bg: string; label: string }> = {
-  critical: { dot: 'bg-red-500', border: 'border-red-500/40', bg: 'bg-red-500/10', label: 'КРИТИЧНО' },
-  warning: { dot: 'bg-yellow-400', border: 'border-yellow-400/40', bg: 'bg-yellow-400/10', label: 'ВНИМАНИЕ' },
-  normal: { dot: 'bg-blue-400', border: 'border-blue-400/30', bg: 'bg-blue-400/5', label: 'ИНФО' },
-  good: { dot: 'bg-green-400', border: 'border-green-400/30', bg: 'bg-green-400/5', label: 'OK' },
+const severityStyle: Record<Severity, {
+  dot: string; border: string; bg: string; badge: string; label: string
+}> = {
+  critical: {
+    dot: 'bg-red-500',
+    border: 'border-red-500/30',
+    bg: 'bg-red-500/[0.06]',
+    badge: 'bg-red-500/20 text-red-400 border border-red-500/40',
+    label: 'КРИТИЧНО',
+  },
+  warning: {
+    dot: 'bg-yellow-400',
+    border: 'border-yellow-500/25',
+    bg: 'bg-yellow-500/[0.05]',
+    badge: 'bg-yellow-400/15 text-yellow-400 border border-yellow-500/30',
+    label: 'ВНИМАНИЕ',
+  },
+  normal: {
+    dot: 'bg-blue-400',
+    border: 'border-slate-700/50',
+    bg: 'bg-slate-800/30',
+    badge: 'bg-blue-500/10 text-blue-300 border border-blue-500/20',
+    label: 'ИНФО',
+  },
+  good: {
+    dot: 'bg-emerald-400',
+    border: 'border-emerald-500/25',
+    bg: 'bg-emerald-500/[0.04]',
+    badge: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/25',
+    label: 'OK',
+  },
 }
 
 const sectorLabel: Record<string, string> = {
@@ -12,6 +38,13 @@ const sectorLabel: Record<string, string> = {
   ecology: 'Экология',
   safety: 'Безопасность',
   utilities: 'ЖКХ',
+}
+
+const sectorBadge: Record<string, string> = {
+  transport: 'T',
+  ecology: 'E',
+  safety: 'S',
+  utilities: 'U',
 }
 
 interface Props {
@@ -28,66 +61,71 @@ export function AlertPanel({ alerts, newAlertIds }: Props) {
   })
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2.5">
       {sorted.map(alert => {
         const s = severityStyle[alert.severity]
         const isNew = newAlertIds?.has(alert.id)
         return (
           <div
             key={alert.id}
-            className={`rounded-xl border ${s.border} ${s.bg} p-4 flex flex-col gap-2 transition-all duration-300 ${isNew ? 'ring-1 ring-cyan-400/50' : ''}`}
+            className={`rounded-xl border ${s.border} ${s.bg} p-3.5 flex flex-col gap-2 transition-all duration-300 ${isNew ? 'ring-1 ring-cyan-400/40 shadow-[0_0_12px_rgba(14,165,233,0.12)]' : ''}`}
           >
+            {/* Header */}
             <div className="flex items-start justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full flex-shrink-0 mt-0.5 ${s.dot} ${alert.severity === 'critical' ? 'animate-pulse' : ''}`} />
-                <p className="text-sm font-semibold text-white leading-tight">{alert.title}</p>
+              <div className="flex items-start gap-2 min-w-0">
+                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 ${s.dot} ${alert.severity === 'critical' ? 'animate-pulse' : ''}`} />
+                <p className="text-[13px] font-semibold text-white leading-tight">{alert.title}</p>
               </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="flex items-center gap-1.5 flex-shrink-0">
                 {isNew && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-cyan-400 text-black animate-pulse">
+                  <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-cyan-400 text-black">
                     NEW
                   </span>
                 )}
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${s.dot === 'bg-red-500' ? 'bg-red-500 text-white' : s.dot === 'bg-yellow-400' ? 'bg-yellow-400 text-black' : 'bg-blue-400/20 text-blue-300'}`}>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${s.badge}`}>
                   {s.label}
                 </span>
-                <span className="text-xs text-slate-500">{alert.timestamp}</span>
               </div>
             </div>
 
-            <p className="text-xs text-slate-400 leading-relaxed">{alert.description}</p>
+            {/* Description */}
+            <p className="text-[12px] text-slate-400 leading-relaxed pl-3.5">{alert.description}</p>
 
-            {alert.location && (
-              <p className="text-xs text-slate-500 flex items-center gap-1">
-                <span>📍</span> {alert.location}
-              </p>
-            )}
-
-            <div className="mt-1 rounded-lg bg-white/5 border border-white/10 px-3 py-2">
-              <p className="text-[11px] text-slate-300">
-                <span className="font-semibold text-white">Действие: </span>
+            {/* Action */}
+            <div className="ml-3.5 rounded-lg bg-white/[0.04] border border-white/[0.07] px-3 py-2">
+              <p className="text-[11px] text-slate-300 leading-relaxed">
+                <span className="font-semibold text-slate-200">Действие: </span>
                 {alert.actionRequired}
               </p>
             </div>
 
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] text-slate-600 uppercase tracking-wider">{sectorLabel[alert.sector]}</span>
-              {alert.source ? (
-                <span className="text-[10px] text-green-500/70 border border-green-500/30 rounded px-1.5 py-0.5">
-                  📡 {alert.source}
-                </span>
-              ) : (
-                <span className="text-[10px] text-slate-600/60 border border-slate-700/40 rounded px-1.5 py-0.5">
-                  🔮 Симулировано
-                </span>
-              )}
+            {/* Footer */}
+            <div className="flex items-center justify-between pl-3.5">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-slate-600 font-medium">{sectorLabel[alert.sector]}</span>
+                {alert.location && (
+                  <span className="text-[10px] text-slate-600">· {alert.location}</span>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] text-slate-600">{alert.timestamp}</span>
+                {alert.source ? (
+                  <span className="text-[10px] text-emerald-500/70 border border-emerald-500/25 rounded px-1.5 py-0.5">
+                    {sectorBadge[alert.sector]} {alert.source}
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-slate-600/50 border border-slate-700/40 rounded px-1.5 py-0.5">
+                    SIM
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         )
       })}
 
       {sorted.length === 0 && (
-        <div className="text-center py-8 text-slate-500 text-sm">
+        <div className="text-center py-10 text-slate-600 text-sm">
           Активных инцидентов нет
         </div>
       )}
